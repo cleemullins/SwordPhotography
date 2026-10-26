@@ -4,6 +4,34 @@ Overlapping top-down photo scans of long objects (sword boxes, blades) on a moto
 edelkrone slider, with a Nikon camera triggered over MCP, stitched from the centre of each
 frame into one evenly lit, low-distortion image.
 
+## The rig
+
+![The complete photography rig](https://github.com/user-attachments/assets/73c90cab-c580-40e6-9ef7-7bc6d6c1d309)
+
+![The slider and lighting setup](https://github.com/user-attachments/assets/b72d434e-08a2-4a3e-98de-eb663a9fa7c1)
+
+![Edelkrone Slider Pro](https://github.com/user-attachments/assets/e59a34a4-86c4-4eaa-b5d6-4cfb2d0adefc)
+
+The overall lighting rig is based on [this setup](https://sword-photo-rig.vercel.app/).
+The slider is an edelkrone SliderPLUS v5 PRO / Long with its Motor Module. The Edelkrone
+SDK, through their new MCP server, is used to calibrate the slider and move it along the
+rail. The LLM (Opus) uses the slider's position and feedback together with the ruler visible
+in each image to determine how far to move for the next frame.
+
+The camera is controlled with the [ControlMyNikon tool suite](https://www.controlmynikon.com/en/index.html),
+which includes an MCP server for capturing images after the camera is set up. Two GVM lights,
+set to 5600K, are the only light sources in the room. They can be controlled over DMX, but
+their settings have not needed to change.
+
+### Scan workflow
+
+Driven by Opus, a scan repeats these steps until the full object and gray card have been
+captured:
+
+1. Take a picture.
+2. Move the slider table by the specified amount.
+3. Repeat, including frames of the gray card so white balance can be set accurately.
+
 [![Stitched wooden box top](docs/images/box_top.jpg)](docs/images/box_top_full.jpg)
 
 *Wooden box top, stitched from 7 frames. Click for the full-resolution image
