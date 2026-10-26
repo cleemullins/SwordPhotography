@@ -1,12 +1,65 @@
 # SwordPhotography
 
 Overlapping top-down photo scans of long objects (sword boxes, blades) on a motorized
-edelkrone slider, with a Nikon camera triggered over MCP and an Xbox controller for
-manual positioning.
+edelkrone slider, with a Nikon camera triggered over MCP, stitched from the centre of each
+frame into one evenly lit, low-distortion image.
 
-The first scan (2026-10-25) photographed a wooden box top and a gray card from 16" to 35"
-on a ruler, one shot per inch: 20 frames, each about 12" wide, so neighbouring frames
-overlap by about 11".
+[![Stitched wooden box top](docs/images/box_top.jpg)](docs/images/box_top_full.jpg)
+
+*Wooden box top, stitched from 7 frames. Click for the full-resolution image
+([`box_top_full.jpg`](docs/images/box_top_full.jpg), 6020 × 1687 px, about 11.4" × 3.2",
+529 px per inch).*
+
+## From scan to stitched image
+
+This is the test run from 2026-10-25, before switching to a longer lens: shots every 2"
+from 16" to 35" on the ruler, camera focus, aperture, shutter and white balance (5600K)
+locked.
+
+### 1. The scan
+
+The slider moves the bed under the camera and stops every 2"; the camera takes one frame
+per stop. Each frame shows about 12" of ruler, so neighbouring frames overlap by about
+10". The seven frames that cover the box (outlined) were stitched; the last four frames
+are the gray card, used for colour checks.
+
+![All 11 frames of the run](docs/images/run_frames.jpg)
+
+### 2. One strip from the centre of each frame
+
+The centre of a frame has the least lens distortion, vignetting and perspective, so only
+a strip around each frame's centre column is used. The strip width equals the interval
+between shots (here ±1"), so the strips tile with no gaps. The tick at the top marks
+the frame centre; note the ruler under each strip reads the frame's own position.
+
+![The strip taken from each frame](docs/images/strips.jpg)
+
+### 3. How the frames overlap and become the final image
+
+Each frame is placed where it matches its neighbours, measured on the wood grain itself
+rather than the ruler: the box top sits above the bed, so it's magnified about 5% more
+than the ruler (529 vs 505 px per inch). Below, every frame is drawn at its measured
+position: dimmed where it isn't used, lit inside its strip. The seam lines run straight
+down into the stitched result. The small vertical step between frames is the slider
+rail running about 1.7° off the camera's horizontal, which the matching corrects.
+
+![Frames at their registered positions, overlapping, with the stitched result](docs/images/overlap.jpg)
+
+### 4. The result, seam by seam
+
+The stitched image with each seam marked and the frame each strip came from:
+
+![Stitched result with seams and source frames](docs/images/assembled.jpg)
+
+Full-resolution crops centred on each seam (the seam runs down the middle of each
+panel): grain, edges and the inlay run straight through. Neighbouring strips are
+cross-faded over ¼".
+
+![Full-resolution crops at each seam](docs/images/seams.jpg)
+
+These images are built from each frame's embedded JPEG preview and regenerated with
+[`tools/make_readme_images.py`](tools/make_readme_images.py). The stitch itself is
+[`stitch.py`](stitch.py); see [docs/INSTRUCTIONS.md](docs/INSTRUCTIONS.md#6-stitching-a-run).
 
 ## What's here
 
@@ -21,6 +74,8 @@ overlap by about 11".
 | [`xbox_slider.py`](xbox_slider.py) | Drive the slider by hand with an Xbox controller's left stick |
 | [`nikon.py`](nikon.py) | Nikon MCP client (`capture`) and NEF preview-JPEG extractor (`preview`) |
 | [`tools/controller_probe.py`](tools/controller_probe.py) | Diagnoses the Xbox controller: XInput vs raw HID |
+| [`tools/make_readme_images.py`](tools/make_readme_images.py) | Makes the README's images from a run and its stitch report |
+| [`docs/images/`](docs/images/) | The README's images, including the full-resolution box top |
 | [`docs/INSTRUCTIONS.md`](docs/INSTRUCTIONS.md) | Step-by-step: setup, calibration, running a scan |
 | [`docs/HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md) | Design notes and everything learned getting it working |
 | [`docs/slider_positions.md`](docs/slider_positions.md) | Measured slider travel and positions |
