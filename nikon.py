@@ -6,7 +6,8 @@
 The server address and bearer token come from the environment:
 
     NIKON_MCP_URL     default http://127.0.0.1:50507/mcp
-    NIKON_MCP_TOKEN   required
+    NIKON_MCP_TOKEN   required; read from the process environment, or on Windows from
+                      the user environment (where `run_config.py set-token` stores it)
 """
 import json
 import os
@@ -19,8 +20,17 @@ URL = os.environ.get("NIKON_MCP_URL", "http://127.0.0.1:50507/mcp")
 
 def _token():
     token = os.environ.get("NIKON_MCP_TOKEN")
+    if not token and os.name == "nt":
+        # A user variable set after this terminal started is not in os.environ yet.
+        import winreg
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+                token = winreg.QueryValueEx(key, "NIKON_MCP_TOKEN")[0]
+        except FileNotFoundError:
+            pass
     if not token:
-        raise SystemExit("set NIKON_MCP_TOKEN to the Nikon MCP server's bearer token")
+        raise SystemExit("set NIKON_MCP_TOKEN to the Nikon MCP server's bearer token "
+                         '(say "Create a run" in Claude Code, or: python run_config.py set-token)')
     return token
 
 

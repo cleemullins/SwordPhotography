@@ -96,6 +96,32 @@ Reading the ruler: in a 6048 px wide frame at this camera height, inch marks are
 
 ## 5. Running a scan
 
+### With Claude Code: "Create a run"
+
+Open Claude Code in this folder and say **"Create a run"**. The `create-run` skill
+(`.claude/skills/create-run/SKILL.md`) walks through:
+
+1. **API key**, only if it isn't stored yet. It's saved in the Windows user environment
+   variable `NIKON_MCP_TOKEN` (`run_config.py set-token`), which `nikon.py` reads when it
+   needs it. It is never written to the repo.
+2. **Slider calibration, on the first run** (first run in a Claude conversation, or after
+   the slider was switched off or the rig moved). It reads the slider's status; this
+   SliderPLUS v5 always reports `is_calibrated: false`, so it starts `xbox_slider.py` and
+   has you drive to the far right, then the far left. The two readings are stored in
+   `slider_calibration.json` (`run_config.py set-ends`). If the slider's zero moved, the
+   scan shifts its ruler positions by the same amount.
+3. **Start, stop and interval** in ruler inches, offering the last run's answers
+   (`run_defaults.json`) as defaults. Any numbers work, including fractions and a start
+   higher than the stop.
+4. **Check and confirm**: it checks every stop is within the slider's reach, describes
+   the motion, and waits for your go-ahead before anything moves.
+5. **Run and report**: `slider_scan.py` in a terminal tab (Ctrl+C stops it), then a
+   summary of the run folder and positioning accuracy.
+
+`run_defaults.json` and `slider_calibration.json` are per-machine and not committed.
+
+### By hand
+
 1. Clear the rail path. Check the gray card and object are where you expect on the ruler.
 2. Lock the camera: **manual focus, aperture, shutter speed, ISO and white balance**
    (5600K was used). Anything left on auto changes from frame to frame; see "Exposure and

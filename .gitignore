@@ -7,5 +7,9 @@ __pycache__/
 *.pyc
 .venv/
 
+# Per-machine state written by run_config.py
+run_defaults.json
+slider_calibration.json
+
 # Local secrets (the Nikon MCP token goes in NIKON_MCP_TOKEN, never in a file here)
 .env

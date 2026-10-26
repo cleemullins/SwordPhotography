@@ -3,19 +3,38 @@
 The SDK has no move-to-position for a slider, so this drives toward the
 target, slows down as it gets close and stops within TOLERANCE_CM.
 
-    python slider_goto.py            go to the centre of travel (44.453 cm)
+    python slider_goto.py            go to the centre of travel
     python slider_goto.py 60.0       go to 60.0 cm
+
+The rail's ends come from slider_calibration.json when it exists (written by
+`run_config.py set-ends` after driving to each end), otherwise from the values
+measured on 2026-10-25 (docs/slider_positions.md).
 
 Stop at any time: Ctrl+C, or the stop button on the slider.
 """
+import json
+import os
 import sys
 import time
 
 import edelkrone
 
 MAC = "C4:DE:E2:EA:5A:E8"   # Motor Module V3 on the SliderPLUS v5
-RIGHT_END_CM = -0.708       # from docs/slider_positions.md
-LEFT_END_CM = 89.613
+CALIBRATION_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "slider_calibration.json")
+MEASURED_RIGHT_END_CM = -0.708   # 2026-10-25, when the ruler calibration in slider_scan.py was made
+MEASURED_LEFT_END_CM = 89.613
+
+
+def _load_ends():
+    try:
+        with open(CALIBRATION_PATH) as f:
+            ends = json.load(f)
+        return ends["right_end_cm"], ends["left_end_cm"]
+    except FileNotFoundError:
+        return MEASURED_RIGHT_END_CM, MEASURED_LEFT_END_CM
+
+
+RIGHT_END_CM, LEFT_END_CM = _load_ends()
 CENTRE_CM = (RIGHT_END_CM + LEFT_END_CM) / 2
 
 FAST = 0.3                  # same cap as xbox_slider.py

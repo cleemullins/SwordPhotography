@@ -12,7 +12,9 @@ overlap by about 11".
 
 | File | What it does |
 |---|---|
-| [`slider_scan.py`](slider_scan.py) | The scan: moves to each ruler inch, settles, captures, logs |
+| [`.claude/skills/create-run`](.claude/skills/create-run/SKILL.md) | Claude Code skill: say **"Create a run"** and it asks for the API key (once), checks calibration on the first run, asks start/stop/interval with last run's answers as defaults, and starts the scan |
+| [`run_config.py`](run_config.py) | Helper for the skill: stores the token, remembers answers, checks a plan, reads slider status, stores rail ends |
+| [`slider_scan.py`](slider_scan.py) | The scan: moves to each ruler position, settles, captures, files the shot into the run folder, logs |
 | [`slider_goto.py`](slider_goto.py) | Moves the slider to a `slide_cm` position (e.g. the centre) |
 | [`xbox_slider.py`](xbox_slider.py) | Drive the slider by hand with an Xbox controller's left stick |
 | [`nikon.py`](nikon.py) | Nikon MCP client (`capture`) and NEF preview-JPEG extractor (`preview`) |
@@ -24,10 +26,14 @@ overlap by about 11".
 
 ## Quick start
 
+In Claude Code, opened in this folder, say **"Create a run"**.
+
+Or by hand:
+
 ```powershell
 pip install -r requirements.txt
-$env:NIKON_MCP_TOKEN = "<token from the Nikon MCP server>"
-python slider_scan.py            # 16" to 35", one shot per inch
+'<token from the Nikon MCP server>' | python run_config.py set-token   # once
+python slider_scan.py 16 35 2    # 16" to 35", one shot every 2"
 ```
 
 Read [docs/INSTRUCTIONS.md](docs/INSTRUCTIONS.md) first: the ruler calibration in

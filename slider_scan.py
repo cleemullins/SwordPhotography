@@ -7,6 +7,7 @@ the centre toward lower ruler numbers, 2.54 cm per inch.
     python slider_scan.py              scan 16" to 35", every 1"
     python slider_scan.py 20 25        scan 20" to 25"
     python slider_scan.py 16 35 2      scan 16" to 35", every 2" (the last stop is always included)
+    python slider_scan.py 35 16 1.5    any start, stop and interval in inches, either direction
 
 Every position is an absolute target (not a step from the last one), so
 errors do not add up.
@@ -30,7 +31,11 @@ import edelkrone
 import nikon
 import slider_goto
 
-REF_CM = 47.058             # slide_cm where the image centre read REF_INCH
+# slide_cm where the image centre read REF_INCH, when the right end read
+# slider_goto.MEASURED_RIGHT_END_CM. If the slider's zero has moved since (a new
+# right end in slider_calibration.json), shift by the same amount: the ruler is
+# fixed relative to the rail's ends.
+REF_CM = 47.058 + (slider_goto.RIGHT_END_CM - slider_goto.MEASURED_RIGHT_END_CM)
 REF_INCH = 20.0
 CM_PER_INCH = 2.54          # higher slide_cm = lower ruler reading
 GRAY_CARD_INCH = 32         # the gray card spans 30" to 34"; this shot is centred on it
@@ -46,6 +51,18 @@ def inch_for_cm(cm):
     return REF_INCH - (cm - REF_CM) / CM_PER_INCH
 
 
+def plan_stops(start, stop, interval):
+    """Ruler positions from start to stop, every interval inches; stop is always included."""
+    if interval <= 0:
+        raise ValueError("interval must be more than 0")
+    direction = 1 if stop >= start else -1
+    count = int(abs(stop - start) / interval + 1e-9)
+    stops = [round(start + direction * i * interval, 3) for i in range(count + 1)]
+    if abs(stops[-1] - stop) > 1e-6:
+        stops.append(round(stop, 3))
+    return stops
+
+
 def move_into_run(src, dst, attempts=20):
     """Moves a saved capture into the run folder, waiting while the camera app still holds it."""
     for _ in range(attempts):
@@ -59,17 +76,15 @@ def move_into_run(src, dst, attempts=20):
 
 
 def main():
-    first = int(sys.argv[1]) if len(sys.argv) > 1 else 16
-    last = int(sys.argv[2]) if len(sys.argv) > 2 else 35
-    step = int(sys.argv[3]) if len(sys.argv) > 3 else 1
-    stops = list(range(first, last + 1, step))
-    if stops[-1] != last:
-        stops.append(last)
+    first = float(sys.argv[1]) if len(sys.argv) > 1 else 16
+    last = float(sys.argv[2]) if len(sys.argv) > 2 else 35
+    step = float(sys.argv[3]) if len(sys.argv) > 3 else 1
+    stops = plan_stops(first, last, step)
     for inch in stops:
         cm = cm_for_inch(inch)
         if not (slider_goto.RIGHT_END_CM + slider_goto.MARGIN_CM <= cm
                 <= slider_goto.LEFT_END_CM - slider_goto.MARGIN_CM):
-            raise SystemExit(f'{inch}" needs slide_cm {cm:.2f}, outside the recorded travel')
+            raise SystemExit(f'{inch:g}" needs slide_cm {cm:.2f}, outside the recorded travel')
     out_dir = os.path.join(RUN_ROOT, datetime.now().strftime("%Y-%m-%dT%H-%M-%S"))
     os.makedirs(out_dir)
     log_path = os.path.join(out_dir, "scan_log.csv")
@@ -83,7 +98,7 @@ def main():
             log.writerow(["shot", "target_inch", "target_cm", "actual_cm", "actual_inch",
                           "nef", "preview", "camera_file", "note"])
             for shot, inch in enumerate(stops):
-                print(f'\n--- shot {shot} ({shot + 1}/{len(stops)}): {inch}"')
+                print(f'\n--- shot {shot} ({shot + 1}/{len(stops)}): {inch:g}"')
                 slider_goto.goto(device, cm_for_inch(inch))
                 time.sleep(SETTLE_S)
                 actual = device.status.pose.slide_cm
