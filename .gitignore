@@ -1,0 +1,11 @@
+# Scan output (previews and logs); raw files live in c:\images
+scan/
+*.nef
+*_preview.jpg
+
+__pycache__/
+*.pyc
+.venv/
+
+# Local secrets (the Nikon MCP token goes in NIKON_MCP_TOKEN, never in a file here)
+.env

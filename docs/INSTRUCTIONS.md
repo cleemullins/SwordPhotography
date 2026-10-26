@@ -1,0 +1,126 @@
+# Instructions
+
+How to set up the rig and reproduce a scan. Commands are PowerShell, run from the repo root.
+
+## 1. One-time setup
+
+1. Install Python 3.11 or newer (3.15 was used) and tick **Add python.exe to PATH**.
+   If `python` opens the Microsoft Store, turn off the alias under
+   Settings > Apps > Advanced app settings > App execution aliases.
+2. Install the edelkrone SDK:
+
+   ```powershell
+   pip install -r requirements.txt
+   ```
+
+3. Pair the Xbox controller over Bluetooth (Settings > Bluetooth & devices). No extra
+   driver or package is needed: `xbox_slider.py` reads it as raw HID.
+
+## 2. Before each session
+
+1. Switch on the slider and **close the edelkrone phone app**: a slider connected to the
+   app (or to another script) does not advertise and is not found.
+2. Start the Nikon MCP server (ArcEngineNet10). Note its port and bearer token; the port
+   can change between runs.
+
+   ```powershell
+   $env:NIKON_MCP_TOKEN = "<bearer token>"
+   $env:NIKON_MCP_URL   = "http://127.0.0.1:<port>/mcp"   # only if not 50507
+   ```
+
+3. Check the camera is connected and ready (`isConnected`, `canCapture`):
+
+   ```powershell
+   python -c "import nikon; print(nikon.call('nikon_camera_get_state'))"
+   ```
+
+4. Check the slider is found (this only scans, nothing moves):
+
+   ```powershell
+   python -m edelkrone.examples.read_device
+   ```
+
+   Expect `Motor Module V3 C4:DE:E2:EA:5A:E8`, layout `slide_only`, axis `slide`.
+
+5. **After a power cycle**, the slider reports `is_calibrated: false` and its `slide_cm`
+   scale may have moved. Drive to the far right end (see 3) and check it reads about
+   **-0.7 cm**. If it doesn't, re-measure the ends and redo the ruler calibration (step 4).
+
+## 3. Manual positioning with the Xbox controller
+
+```powershell
+python xbox_slider.py --controller-only   # check the stick, no slider
+python xbox_slider.py                     # drive the slider
+```
+
+- Left stick left/right moves the carriage, up to `MAX_SPEED` (30%). Releasing it stops.
+- **B** or **Ctrl+C** stops and quits.
+- Pushing right moves the carriage right (`INVERT = True`); right is **lower** `slide_cm`.
+- Only one program can be connected to the slider at a time: quit this before running
+  `slider_goto.py` or `slider_scan.py`.
+
+Move to a known position without the controller:
+
+```powershell
+python slider_goto.py          # centre of travel, 44.453 cm
+python slider_goto.py 20.5     # any slide_cm inside the travel
+```
+
+## 4. Ruler calibration
+
+`slider_scan.py` converts ruler inches to `slide_cm` with two constants, `REF_CM` and
+`REF_INCH`. Redo them whenever the camera, ruler or slider is moved, or the slider's
+scale has shifted after a power cycle.
+
+1. Move the slider so the ruler is near the image centre, e.g. `python slider_goto.py 44.5`.
+2. Take a picture and extract a preview:
+
+   ```powershell
+   $nef = python nikon.py capture
+   python nikon.py preview $nef
+   ```
+
+3. Open the `_preview.jpg` and read the ruler value at the **horizontal centre** of the
+   image. Note the slider position (`slide_cm`, printed by `slider_goto.py`).
+4. Move exactly 2.54 cm toward higher `slide_cm` (`python slider_goto.py <cm + 2.54>`),
+   capture again and read the centre again. It should be **1.0" lower**. If the change is
+   not 1", or goes the other way, adjust `CM_PER_INCH` or its sign in `slider_scan.py`.
+5. Put the second reading into `slider_scan.py`: `REF_CM` = its `slide_cm`,
+   `REF_INCH` = its ruler value.
+
+The 2026-10-25 calibration: centre read **21.0" at 44.475 cm** and **20.0" at 47.058 cm**,
+so `REF_CM = 47.058`, `REF_INCH = 20.0`, `CM_PER_INCH = 2.54`.
+
+Reading the ruler: in a 6048 px wide frame at this camera height, inch marks are about
+505 px apart (about 167 px in a 2000 px wide preview), so a frame spans about 12".
+
+## 5. Running a scan
+
+1. Clear the rail path. Check the gray card and object are where you expect on the ruler.
+2. Set the camera exposure to **manual** if the gray card will be used for color grading
+   (see "Exposure" in HOW_IT_WORKS.md).
+3. Run:
+
+   ```powershell
+   python slider_scan.py            # 16" to 35"
+   python slider_scan.py 18 30      # any inch range
+   ```
+
+   The scan moves to the first stop at 30% speed, then steps 1" at a time at 10% speed,
+   waits 1 s to settle, captures, and logs. 20 shots take about 2–3 minutes.
+4. Results:
+   - raw files: `c:\images\NNNN.nef` (numbering continues from the camera app)
+   - previews: `scan\scan_NN_<inch>in.jpg`; the shot centred on the gray card (32") is
+     `..._graycard.jpg`
+   - log: `scan\scan_log.csv` (target and actual position of every shot, file names)
+5. Check a few previews: the ruler value at the image centre should match the file name.
+
+## 6. Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| Slider not found | Close the edelkrone app and any other script; switch the slider off and on |
+| `slider is not idle` | Wait: a slider may run a movement of its own after power-on |
+| Controller "waiting..." forever | Wake it (Xbox button); run `python tools/controller_probe.py` |
+| Camera capture times out | Check `nikon_camera_get_state`: connected, `canCapture: true`; check the MCP port |
+| Slider stops early in a scan | The `slide_cm` moved outside the recorded travel: re-measure the ends |
