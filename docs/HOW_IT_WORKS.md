@@ -96,8 +96,10 @@ under the camera changes. A ruler along the bottom of the frame gives the positi
   `slide_cm = 47.058 - (inch - 20) * 2.54`, so 16" = 57.218 cm and 35" = 8.958 cm.
 - **Absolute targets**: each stop is computed from the calibration, not stepped from the
   last stop, so positioning errors don't accumulate.
-- **Per shot**: `goto` (10% speed for 1" steps), wait 1 s for vibration to settle, read
-  the actual `slide_cm`, capture, extract the preview, append to `scan_log.csv`.
+- **Per shot**: `goto` (10% speed for 1" and 2" steps), wait 1 s for vibration to settle,
+  read the actual `slide_cm`, capture, move the camera's `NNNN.nef` into the run folder as
+  `<shot>.nef`, extract the preview, append to `scan_log.csv`. Run folders and file names
+  are described in [INSTRUCTIONS.md](INSTRUCTIONS.md#run-folders-and-file-naming).
 - **Result** (see [example_scan_log.csv](example_scan_log.csv)): 20 shots, actual centres
   16.05" to 34.97", every shot within 0.05" of its target. Checked by eye: the ruler at the
   image centre matched the target in the 32" and 35" frames.
@@ -105,13 +107,27 @@ under the camera changes. A ruler along the bottom of the frame gives the positi
   top ran from about 16.9" to 27.9"; the gray card sat at about 29.4"–32.8" and is fully
   in the 30"–34" frames. The 32" frame is the gray card reference (`c:\images\0020.nef`).
 
-## Exposure
+## Exposure and white balance
 
-The gray card looks noticeably brighter in the 35" frame than in the 32" frame, and the
-black background shows more lint. Either the camera's automatic exposure changed between
-shots or the lighting is uneven across the bed; this wasn't investigated. For color
-grading from one gray card shot, set exposure (and white balance) to manual so every
-frame is exposed the same way.
+Measured as the average colour of the same patch of gray card (ruler 30.0"–32.2") in each
+frame's embedded JPEG preview, so these include the camera's own processing:
+
+| Camera settings | 30" frame | 32" frame | 34" frame | 35" frame |
+|---|---|---|---|---|
+| All auto (first scan) | n/a | 138 / 187 / 246 | n/a | 235 / 253 / 255 |
+| Manual focus, aperture, shutter; auto WB | 40 / 69 / 105 | 69 / 70 / 71 | 68 / 69 / 69 | 65 / 66 / 66 |
+| ...and white balance locked at 5600K | 50 / 50 / 53 | 48 / 48 / 51 | 44 / 45 / 47 | 42 / 42 / 44 |
+
+- With auto exposure the card swung from blue-tinted to clipped white between frames.
+- With exposure locked but auto white balance, the frame with the most warm wood in it
+  (30") came out blue: the camera cooled the whole frame to compensate.
+- With everything locked, the card is neutral in every frame (R = G, B about 3 higher).
+- **Edge falloff**: the card is about 17% darker 4–5" from the frame centre than at the
+  centre (the same is seen on the wood). That is vignetting or uneven light, not a camera
+  setting. With 2" steps and 12" frames, use only the middle few inches of each frame when
+  stitching, or divide by a flat-field frame of an evenly lit blank card.
+- At 5600K the card sits at about 48/255, roughly 1.5 stops under where an 18% gray card
+  normally lands (115–125). Raw files recover this, but more exposure helps the shadows.
 
 ## Ideas not done yet
 

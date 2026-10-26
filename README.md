@@ -39,7 +39,9 @@ checked after a power cycle.
 - edelkrone **SliderPLUS v5 PRO / Long** with the **Motor Module for SliderPLUS**
   (reports over Bluetooth as `Motor Module V3`, MAC `C4:DE:E2:EA:5A:E8`, firmware 0.46)
 - Nikon camera facing straight down, controlled by the **ArcEngineNet10 MCP** server
-  (NikonMCP module) on `http://127.0.0.1:<port>/mcp`; images save to `c:\images\NNNN.nef`
+  (NikonMCP module) on `http://127.0.0.1:<port>/mcp`; the camera saves `c:\images\NNNN.nef`,
+  and each scan moves its shots into a run folder `c:\images\yyyy-mm-ddThh-mm-ss\0.nef, 1.nef, ...`
+  (see [Run folders and file naming](docs/INSTRUCTIONS.md#run-folders-and-file-naming))
 - Xbox Wireless Controller (Xbox One S, Bluetooth, PID `02E0`)
 - Black velvet bed, a SAVAGE aluminum ruler along the bottom edge, a gray card
 - Windows 11, Python 3.15, edelkrone SDK 0.1.1

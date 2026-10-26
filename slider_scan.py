@@ -6,15 +6,24 @@ the centre toward lower ruler numbers, 2.54 cm per inch.
 
     python slider_scan.py              scan 16" to 35", every 1"
     python slider_scan.py 20 25        scan 20" to 25"
+    python slider_scan.py 16 35 2      scan 16" to 35", every 2" (the last stop is always included)
 
 Every position is an absolute target (not a step from the last one), so
-errors do not add up. Results go to scan/scan_log.csv and scan/*.jpg.
+errors do not add up.
+
+Each run gets its own folder under RUN_ROOT, named for its start time as
+yyyy-mm-ddThh-mm-ss (Windows does not allow ":" in names). The camera saves
+each shot as c:\\images\\NNNN.nef; the scan moves it into the run folder as
+0.nef, 1.nef, ... in shot order, next to a preview (0.jpg, ...) and
+scan_log.csv, which also records each shot's original camera file name.
+
 Stop at any time: Ctrl+C, or the stop button on the slider.
 """
 import csv
 import os
 import sys
 import time
+from datetime import datetime
 
 import edelkrone
 
@@ -26,7 +35,7 @@ REF_INCH = 20.0
 CM_PER_INCH = 2.54          # higher slide_cm = lower ruler reading
 GRAY_CARD_INCH = 32         # the gray card spans 30" to 34"; this shot is centred on it
 SETTLE_S = 1.0              # let vibration die down before each capture
-OUT_DIR = "scan"
+RUN_ROOT = r"c:\images"     # run folders go here, next to the camera's own output
 
 
 def cm_for_inch(inch):
@@ -37,37 +46,57 @@ def inch_for_cm(cm):
     return REF_INCH - (cm - REF_CM) / CM_PER_INCH
 
 
+def move_into_run(src, dst, attempts=20):
+    """Moves a saved capture into the run folder, waiting while the camera app still holds it."""
+    for _ in range(attempts):
+        try:
+            os.replace(src, dst)
+            return dst
+        except PermissionError:
+            time.sleep(0.25)
+    os.replace(src, dst)
+    return dst
+
+
 def main():
     first = int(sys.argv[1]) if len(sys.argv) > 1 else 16
     last = int(sys.argv[2]) if len(sys.argv) > 2 else 35
-    stops = list(range(first, last + 1))
+    step = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+    stops = list(range(first, last + 1, step))
+    if stops[-1] != last:
+        stops.append(last)
     for inch in stops:
         cm = cm_for_inch(inch)
         if not (slider_goto.RIGHT_END_CM + slider_goto.MARGIN_CM <= cm
                 <= slider_goto.LEFT_END_CM - slider_goto.MARGIN_CM):
             raise SystemExit(f'{inch}" needs slide_cm {cm:.2f}, outside the recorded travel')
-    os.makedirs(OUT_DIR, exist_ok=True)
-    log_path = os.path.join(OUT_DIR, "scan_log.csv")
+    out_dir = os.path.join(RUN_ROOT, datetime.now().strftime("%Y-%m-%dT%H-%M-%S"))
+    os.makedirs(out_dir)
+    log_path = os.path.join(out_dir, "scan_log.csv")
+    print(f"run folder: {out_dir}")
     device = edelkrone.connect(mac=slider_goto.MAC)
     try:
         if not device.move.wait_until_idle(timeout=10):
             raise SystemExit("slider is not idle; not moving it")
         with open(log_path, "w", newline="") as f:
             log = csv.writer(f)
-            log.writerow(["shot", "target_inch", "target_cm", "actual_cm", "actual_inch", "nef", "preview", "note"])
-            for shot, inch in enumerate(stops, 1):
-                print(f'\n--- shot {shot}/{len(stops)}: {inch}"')
+            log.writerow(["shot", "target_inch", "target_cm", "actual_cm", "actual_inch",
+                          "nef", "preview", "camera_file", "note"])
+            for shot, inch in enumerate(stops):
+                print(f'\n--- shot {shot} ({shot + 1}/{len(stops)}): {inch}"')
                 slider_goto.goto(device, cm_for_inch(inch))
                 time.sleep(SETTLE_S)
                 actual = device.status.pose.slide_cm
-                nef = nikon.capture()
+                camera_file = nikon.capture()
+                nef = move_into_run(camera_file, os.path.join(out_dir, f"{shot}.nef"))
+                jpg = nikon.preview(nef, os.path.join(out_dir, f"{shot}.jpg"))
                 note = "gray card reference" if inch == GRAY_CARD_INCH else ""
-                name = f"scan_{shot:02d}_{inch}in" + ("_graycard" if note else "") + ".jpg"
-                jpg = nikon.preview(nef, os.path.join(OUT_DIR, name))
                 log.writerow([shot, inch, f"{cm_for_inch(inch):.3f}", f"{actual:.3f}",
-                              f"{inch_for_cm(actual):.3f}", nef, jpg, note])
+                              f"{inch_for_cm(actual):.3f}", nef, jpg,
+                              os.path.basename(camera_file), note])
                 f.flush()
-                print(f'captured {nef} at {actual:.3f} cm ({inch_for_cm(actual):.2f}")')
+                print(f'shot {shot}: {nef} (was {os.path.basename(camera_file)}) '
+                      f'at {actual:.3f} cm ({inch_for_cm(actual):.2f}")')
     finally:
         device.move.stop()
         device.disconnect()

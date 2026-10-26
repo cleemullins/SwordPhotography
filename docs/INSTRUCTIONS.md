@@ -97,23 +97,57 @@ Reading the ruler: in a 6048 px wide frame at this camera height, inch marks are
 ## 5. Running a scan
 
 1. Clear the rail path. Check the gray card and object are where you expect on the ruler.
-2. Set the camera exposure to **manual** if the gray card will be used for color grading
-   (see "Exposure" in HOW_IT_WORKS.md).
+2. Lock the camera: **manual focus, aperture, shutter speed, ISO and white balance**
+   (5600K was used). Anything left on auto changes from frame to frame; see "Exposure and
+   white balance" in HOW_IT_WORKS.md.
 3. Run:
 
    ```powershell
-   python slider_scan.py            # 16" to 35"
-   python slider_scan.py 18 30      # any inch range
+   python slider_scan.py              # 16" to 35", every 1" (20 shots)
+   python slider_scan.py 16 35 2      # every 2" (11 shots; the last stop is always included)
+   python slider_scan.py 18 30        # any inch range
    ```
 
-   The scan moves to the first stop at 30% speed, then steps 1" at a time at 10% speed,
-   waits 1 s to settle, captures, and logs. 20 shots take about 2–3 minutes.
-4. Results:
-   - raw files: `c:\images\NNNN.nef` (numbering continues from the camera app)
-   - previews: `scan\scan_NN_<inch>in.jpg`; the shot centred on the gray card (32") is
-     `..._graycard.jpg`
-   - log: `scan\scan_log.csv` (target and actual position of every shot, file names)
-5. Check a few previews: the ruler value at the image centre should match the file name.
+   The scan moves to the first stop at 30% speed, then steps at 10% speed, waits 1 s to
+   settle, captures, moves the file into the run folder, and logs. 20 shots take about
+   2–3 minutes.
+4. Results: one run folder, see "Run folders and file naming" below.
+5. Check a few previews: the ruler value at the image centre should match `target_inch`
+   in the log.
+
+### Run folders and file naming
+
+Every run of `slider_scan.py` is stored in its **own folder**, and the images inside it
+are named **only by their shot number**:
+
+```
+c:\images\
+  2026-10-25T21-51-11\        <- one run, named for its start time
+    0.nef   0.jpg             <- shot 0: raw file and its preview
+    1.nef   1.jpg
+    2.nef   2.jpg
+    ...
+    scan_log.csv              <- one row per shot
+```
+
+- **Folder name**: the run's start time as `yyyy-mm-ddThh-mm-ss` (local time, 24-hour).
+  This is ISO 8601 with `-` instead of `:` between hours, minutes and seconds, because
+  Windows does not allow `:` in file or folder names. Names sort in time order.
+- **File names**: `0`, `1`, `2`, ... in shot order, starting at 0, with no padding and no
+  inch or label in the name. `N.nef` is the raw file, `N.jpg` its preview.
+- **Where the details are**: `scan_log.csv` maps each shot number to its ruler position
+  (`target_inch`, `actual_inch`), slider position (`target_cm`, `actual_cm`), the camera's
+  original file name (`camera_file`, e.g. `0045.nef`) and notes. The shot centred on the
+  gray card (32") is marked `gray card reference` in the `note` column.
+- **How it's done**: the Nikon MCP server cannot choose where it saves (its tools take no
+  arguments), so the camera still writes `c:\images\NNNN.nef`. Right after each capture,
+  `slider_scan.py` moves that file into the run folder and renames it. The run folder must
+  be on the same drive as `c:\images` for the move to be instant.
+- `RUN_ROOT` at the top of `slider_scan.py` sets where run folders are created
+  (default `c:\images`).
+
+Runs made before this convention (2026-10-25, before 21:58) left their raw files as
+`c:\images\0004.nef` ... `0047.nef` and their previews in the repo's `scan\` folder.
 
 ## 6. Troubleshooting
 
