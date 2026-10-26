@@ -13,6 +13,8 @@ overlap by about 11".
 | File | What it does |
 |---|---|
 | [`.claude/skills/create-run`](.claude/skills/create-run/SKILL.md) | Claude Code skill: say **"Create a run"** and it asks for the API key (once), checks calibration on the first run, asks start/stop/interval with last run's answers as defaults, and starts the scan |
+| [`.claude/skills/stitch-run`](.claude/skills/stitch-run/SKILL.md) | Claude Code skill: say **"Stitch a run"** and it picks the run (newest by default), asks the range and blend, stitches, checks the seams and reports |
+| [`stitch.py`](stitch.py) | Stitches a run's centre strips into one image, using the run's own interval; registers frames on the object itself |
 | [`run_config.py`](run_config.py) | Helper for the skill: stores the token, remembers answers, checks a plan, reads slider status, stores rail ends |
 | [`slider_scan.py`](slider_scan.py) | The scan: moves to each ruler position, settles, captures, files the shot into the run folder, logs |
 | [`slider_goto.py`](slider_goto.py) | Moves the slider to a `slide_cm` position (e.g. the centre) |

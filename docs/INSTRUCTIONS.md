@@ -175,7 +175,33 @@ c:\images\
 Runs made before this convention (2026-10-25, before 21:58) left their raw files as
 `c:\images\0004.nef` ... `0047.nef` and their previews in the repo's `scan\` folder.
 
-## 6. Troubleshooting
+## 6. Stitching a run
+
+Say **"Stitch a run"** in Claude Code (the `stitch-run` skill), or by hand:
+
+```powershell
+python stitch.py runs                                   # runs found, newest first
+python stitch.py info <run>\scan_log.csv                # frames, interval, range
+python stitch.py <run>\scan_log.csv --from 16 --to 28   # stitch the box top
+```
+
+- **Strip width follows the run.** The interval is read from the log; each frame's strip
+  runs halfway to its neighbours, so a 2" run uses ±1" around each frame centre and a
+  ½" run ±¼". The narrower the interval, the closer to the lens centre every strip is,
+  which gives the most even exposure and least distortion.
+- **Placement comes from the images.** Neighbouring frames are matched on the object
+  itself (coarse phase correlation, then sub-pixel template matching), so it works for
+  any lens or interval, as long as neighbouring frames overlap on the object.
+- **One object at a time.** Objects at different heights are magnified differently
+  (box top ~529 px/in, gray card on the bed ~513 px/in on 2026-10-25), and a seam across
+  bare velvet matches poorly. Such seams are listed as `weak_seams` in the report.
+- **Outputs** go into the run folder: `stitched_<from>-<to>in.tif` (full resolution),
+  `_preview.jpg`, `_seams.jpg` (full-resolution crops around each seam, to check the
+  joins) and `_report.json` (shifts, match scores, scale).
+- The source is each frame's embedded JPEG preview (8-bit). For a raw-based result,
+  convert the NEFs to 16-bit TIFFs with identical settings first.
+
+## 7. Troubleshooting
 
 | Problem | Fix |
 |---|---|
