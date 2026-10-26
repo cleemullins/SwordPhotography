@@ -12,8 +12,10 @@ of a lost controller; Windows notices a lost Bluetooth link after a few
 seconds. If the program itself stops responding, the slider stops on its
 own about 1.5 s after the last command.
 
-The controller is read as a raw Bluetooth HID device, because XInput on this
-PC does not see it.
+The controller is read through XInput when Windows offers it there, otherwise
+as a raw Bluetooth HID device. On this PC Windows has done both on different
+days: when it runs the controller as an XInput gamepad, raw HID reads get
+nothing; when it doesn't, XInput reports no controller.
 
     python xbox_slider.py                    drive the slider
     python xbox_slider.py --controller-only  just print the stick, no slider
@@ -105,8 +107,8 @@ def _open_xbox_controller():
     return None
 
 
-class Controller:
-    """Reads the controller on a background thread and keeps its latest state.
+class HidController:
+    """Reads the controller's raw Bluetooth HID reports on a background thread.
 
     The controller only sends a report when something changes, so `age()`
     says how long ago the last one arrived.
@@ -145,6 +147,55 @@ class Controller:
         _k32.CloseHandle(self._handle)
 
 
+# --- XInput -----------------------------------------------------------------
+
+class _XInputGamepad(ctypes.Structure):
+    _fields_ = [("wButtons", wintypes.WORD), ("bLeftTrigger", ctypes.c_ubyte),
+                ("bRightTrigger", ctypes.c_ubyte), ("sThumbLX", ctypes.c_short),
+                ("sThumbLY", ctypes.c_short), ("sThumbRX", ctypes.c_short), ("sThumbRY", ctypes.c_short)]
+
+
+class _XInputState(ctypes.Structure):
+    _fields_ = [("dwPacketNumber", wintypes.DWORD), ("Gamepad", _XInputGamepad)]
+
+
+_xinput = ctypes.WinDLL("xinput1_4")
+XINPUT_BUTTON_B = 0x2000
+
+
+def _xinput_slot():
+    """Returns the first XInput slot (0-3) with a controller, or None."""
+    for slot in range(4):
+        if _xinput.XInputGetState(slot, ctypes.byref(_XInputState())) == 0:
+            return slot
+    return None
+
+
+class XInputController:
+    """Reads the controller through XInput, polled on each call to state()."""
+
+    def __init__(self, slot):
+        self._slot = slot
+        self._packet = None
+        self._last = time.monotonic()
+        self.connected = True
+
+    def state(self):
+        """Returns (stick_x, b_pressed, seconds_since_the_input_last_changed)."""
+        s = _XInputState()
+        if _xinput.XInputGetState(self._slot, ctypes.byref(s)) != 0:
+            self.connected = False
+            return 0, False, time.monotonic() - self._last
+        if s.dwPacketNumber != self._packet:
+            self._packet = s.dwPacketNumber
+            self._last = time.monotonic()
+        pad = s.Gamepad
+        return pad.sThumbLX, bool(pad.wButtons & XINPUT_BUTTON_B), time.monotonic() - self._last
+
+    def close(self):
+        pass
+
+
 # --- Controller to slider ---------------------------------------------------
 
 def stick_to_speed(x):
@@ -160,11 +211,22 @@ def stick_to_speed(x):
 
 
 def wait_for_controller():
+    """XInput when Windows offers the controller there; raw Bluetooth HID otherwise.
+
+    When Windows runs the controller as an XInput gamepad, its xinputhid driver
+    takes the input and raw HID readers receive nothing, so XInput comes first.
+    """
     print("waiting for the Xbox controller (press its Xbox button to wake it) ...")
-    while (handle := _open_xbox_controller()) is None:
+    while True:
+        slot = _xinput_slot()
+        if slot is not None:
+            print(f"controller found (XInput slot {slot})")
+            return XInputController(slot)
+        handle = _open_xbox_controller()
+        if handle is not None:
+            print("controller found (raw Bluetooth HID)")
+            return HidController(handle)
         time.sleep(0.5)
-    print("controller found")
-    return Controller(handle)
 
 
 def controller_only():

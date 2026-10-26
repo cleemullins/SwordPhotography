@@ -5,7 +5,7 @@ Design notes and what was learned setting up the rig on 2026-10-25.
 ## Overview
 
 ```
-Xbox controller --(Bluetooth HID)--> xbox_slider.py --+
+Xbox controller --(XInput or raw HID)--> xbox_slider.py --+
                                                       +--(edelkrone SDK, BLE)--> Motor Module V3 --> SliderPLUS v5
                        slider_goto.py / slider_scan.py +
                                      |
@@ -58,17 +58,29 @@ under the camera changes. A ruler along the bottom of the frame gives the positi
 
 ## The Xbox controller
 
-- **XInput does not see the controller on this PC.** `xinput1_4`, `xinput1_3` and
-  `xinput9_1_0` all return `ERROR_DEVICE_NOT_CONNECTED` (1167) for all four slots, from
-  every process tried (sandboxed shell, the app's terminal, a foreground PowerShell
-  window). Windows shows the controller connected, with the standard `xinputhid` filter
-  driver, and no remapper (Steam Input, HidHide, ViGEm, DS4Windows) is running.
-  Microsoft's **GameInput Redist** service and `GameInputRawInputProxy` are running, along
-  with an "XBOX Synthetic Gamepad Bus"; the likely cause is that this stack intercepts
-  XInput, but that was not confirmed.
-- **Raw HID works.** The controller's HID interface (`VID 045E PID 02E0`) opens with
-  `CreateFile` and delivers 16-byte input reports. `xbox_slider.py` reads those directly
-  with SetupAPI + `hid.dll` through `ctypes` (no packages needed).
+Windows has presented the same Bluetooth controller in two different ways on this PC,
+so `xbox_slider.py` supports both and picks whichever is available, XInput first. It
+prints which: `controller found (XInput slot 0)` or `controller found (raw Bluetooth HID)`.
+
+- **Mode 1: raw HID only** (2026-10-25, morning). XInput (`xinput1_4`, `xinput1_3`,
+  `xinput9_1_0`) returned `ERROR_DEVICE_NOT_CONNECTED` (1167) for all four slots from
+  every process tried, while the controller's HID interface (`VID 045E PID 02E0`) opened
+  with `CreateFile` and delivered 16-byte input reports. The HID device ID was
+  `HID\{00001124-...}_VID&0002045E_PID&02E0\...`.
+- **Mode 2: XInput** (2026-10-25, evening). The HID device ID gained `&IG_00`
+  (`HID\{00001124-...}&VID_045E&PID_02E0&IG_00\...`), meaning Windows' `xinputhid` driver now
+  runs it as a gamepad. XInput slot 0 then reports the controller, and **raw HID reads
+  receive nothing** (the device opens, but no reports arrive). In this mode, moving the
+  stick also moved the mouse pointer when no game had focus, and XInput delivered the
+  stick to the script **while its terminal had focus**.
+- What switches between the modes wasn't established. Running alongside: Microsoft's
+  **GameInput Redist** service and `GameInputRawInputProxy`, an "XBOX Synthetic Gamepad
+  Bus", the Xbox PC app and `XboxService`. No remapper (Steam Input, HidHide, ViGEm,
+  DS4Windows, reWASD) was running in either mode.
+- **Practical rule**: keep the terminal running `xbox_slider.py` focused while driving.
+  `tools/controller_probe.py` shows which mode the controller is in.
+
+Raw HID details (mode 1), read with SetupAPI + `hid.dll` through `ctypes`, no packages:
 - Report layout (report id `0x01`, older Xbox One S Bluetooth firmware):
 
   | Bytes | Field |
@@ -84,7 +96,10 @@ under the camera changes. A ruler along the bottom of the frame gives the positi
 - **The controller only sends a report when something changes.** A stick held still at
   full sends nothing, so "no recent report" cannot be used as a lost-controller check
   (it would stop the slider during a steady hold). A lost controller is detected when
-  `ReadFile` fails, which Windows does within a few seconds of the link dropping.
+  `ReadFile` fails (raw HID) or `XInputGetState` stops returning success (XInput), which
+  Windows does within a few seconds of the link dropping.
+- XInput gives the left stick X as a signed -32768..32767 and B as button bit `0x2000`;
+  the stick rests around +500 to +2100 on this controller, inside the deadzone.
 - Stick to speed: deadzone 7849 (of 32767), then the remaining travel squared, times
   `MAX_SPEED` (0.3), for fine control near the centre.
 

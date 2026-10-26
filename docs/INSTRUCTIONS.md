@@ -14,7 +14,8 @@ How to set up the rig and reproduce a scan. Commands are PowerShell, run from th
    ```
 
 3. Pair the Xbox controller over Bluetooth (Settings > Bluetooth & devices). No extra
-   driver or package is needed: `xbox_slider.py` reads it as raw HID.
+   driver or package is needed: `xbox_slider.py` reads it through XInput, or as raw
+   Bluetooth HID when XInput doesn't see it.
 
 ## 2. Before each session
 
@@ -53,6 +54,9 @@ python xbox_slider.py --controller-only   # check the stick, no slider
 python xbox_slider.py                     # drive the slider
 ```
 
+- **Keep the terminal running it focused** (click into it). When Windows runs the
+  controller as an XInput gamepad, the stick reaches the script only while its window
+  has focus; otherwise it may move the mouse pointer instead.
 - Left stick left/right moves the carriage, up to `MAX_SPEED` (30%). Releasing it stops.
 - **B** or **Ctrl+C** stops and quits.
 - Pushing right moves the carriage right (`INVERT = True`); right is **lower** `slide_cm`.
@@ -208,5 +212,6 @@ python stitch.py <run>\scan_log.csv --from 16 --to 28   # stitch the box top
 | Slider not found | Close the edelkrone app and any other script; switch the slider off and on |
 | `slider is not idle` | Wait: a slider may run a movement of its own after power-on |
 | Controller "waiting..." forever | Wake it (Xbox button); run `python tools/controller_probe.py` |
+| Controller found but stick does nothing / moves the mouse | Click into the terminal running `xbox_slider.py` so it has focus; check it says `(XInput slot N)` |
 | Camera capture times out | Check `nikon_camera_get_state`: connected, `canCapture: true`; check the MCP port |
 | Slider stops early in a scan | The `slide_cm` moved outside the recorded travel: re-measure the ends |

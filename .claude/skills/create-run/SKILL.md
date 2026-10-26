@@ -59,6 +59,9 @@ It connects (nothing moves) and prints JSON with `is_calibrated`, `slide_cm`,
      clear and close the edelkrone phone app.
   2. Start the controller program in a Terminal panel tab titled `Xbox slider control`:
      `python xbox_slider.py`. Read the tab to confirm it printed `connected at ... cm`.
+     Tell the user to click into that tab before using the stick: when Windows runs the
+     controller as an XInput gamepad, the stick only reaches the program while its
+     window has focus (otherwise it may move the mouse pointer).
      If it's stuck on `waiting for the Xbox controller`, ask the user to press the Xbox
      button; see docs/INSTRUCTIONS.md troubleshooting if that doesn't help.
   3. Ask with AskUserQuestion: "Drive the slider all the way to the RIGHT end, then tell
