@@ -1,4 +1,4 @@
-# SwordPhotography
+# Sword / Nihonto Photography
 
 Overlapping top-down photo scans of long objects (sword boxes, blades) on a motorized
 edelkrone slider, with a Nikon camera triggered over MCP, stitched from the centre of each
@@ -9,6 +9,24 @@ frame into one evenly lit, low-distortion image.
 *Wooden box top, stitched from 7 frames. Click for the full-resolution image
 ([`box_top_full.jpg`](docs/images/box_top_full.jpg), 6020 × 1687 px, about 11.4" × 3.2",
 529 px per inch).*
+
+## Why blades are hard to photograph
+
+A polished sword blade is close to a mirror. Instead of showing its own surface, it
+reflects whatever is around it: the lights show up as bright hot spots or streaks, and
+the room, the camera and the photographer show up as dark or coloured patches. Because
+the blade is long and its surfaces are angled (bevels, ridge line, a slight curve), the
+angle to the lights changes along its length, so one part of the blade can be blown out
+while another goes dark. Fitting the whole blade into one frame makes it worse: the ends
+sit near the edges of the lens, where the image is darker and more distorted and where
+the lights reflect at a different angle than in the middle.
+
+This project photographs the blade in sections instead. The camera stays straight above
+the bed while the slider moves the object underneath it in small steps, and only a narrow
+strip from the centre of each frame is kept. Every part of the object is therefore
+photographed from the same position: straight down, through the centre of the lens. With
+focus, exposure and white balance locked, the strips are then stitched into one image
+that is evenly exposed from end to end. The first test, below, used a wooden box top.
 
 ## From scan to stitched image
 
@@ -106,6 +124,7 @@ checked after a power cycle.
   and each scan moves its shots into a run folder `c:\images\yyyy-mm-ddThh-mm-ss\0.nef, 1.nef, ...`
   (see [Run folders and file naming](docs/INSTRUCTIONS.md#run-folders-and-file-naming))
 - Xbox Wireless Controller (Xbox One S, Bluetooth, PID `02E0`)
+- Lighting: two **GVM BD45R** lights
 - Black velvet bed, a SAVAGE aluminum ruler along the bottom edge, a gray card
 - Windows 11, Python 3.15, edelkrone SDK 0.1.1
 
