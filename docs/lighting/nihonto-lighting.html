@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nihonto reflection geometry</title>
+<script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("clawpilotTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--cp-bg); color: var(--cp-text); font: 16px/1.5 "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif; }
+main { max-width: 1440px; margin: auto; padding: 28px; }
+h1 { margin: 0 0 8px; font-size: 30px; }
+h2 { margin: 0 0 16px; font-size: 20px; }
+h3 { font-size: 17px; margin-bottom: 8px; }
+p { margin: 8px 0 16px; }
+.muted, small { color: var(--cp-text-muted); }
+.layout { display: grid; grid-template-columns: 330px 1fr; gap: 20px; align-items: start; }
+.card { background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+.note { border-left: 4px solid var(--cp-accent); padding: 12px 16px; background: var(--cp-accent-soft); border-radius: 0.625rem; }
+.control { margin-bottom: 16px; }
+.control label { display: flex; justify-content: space-between; gap: 8px; }
+output { color: var(--cp-accent); font-weight: 600; white-space: nowrap; }
+input[type=range] { width: 100%; accent-color: var(--cp-accent); }
+input[type=number], select, button { font: inherit; border: 1px solid var(--cp-border-strong); border-radius: 0.625rem; padding: 8px; color: var(--cp-text); background: var(--cp-surface); }
+input[type=number], select { width: 100%; }
+input[type=checkbox] { accent-color: var(--cp-accent); }
+button { cursor: pointer; margin: 4px 4px 4px 0; }
+button:hover { border-color: var(--cp-accent); background: var(--cp-accent-soft); }
+.primary { background: var(--cp-accent); color: var(--cp-accent-fg); border-color: var(--cp-accent); }
+.primary:hover { background: var(--cp-accent-hover); }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+.stat { background: var(--cp-surface-soft); padding: 12px; border-radius: 0.625rem; }
+.stat strong { display: block; font-size: 22px; color: var(--cp-accent); }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fields label { display: block; font-size: 14px; }
+svg { width: 100%; height: auto; display: block; }
+.map { display: grid; grid-template-columns: 180px 1fr; gap: 24px; align-items: start; }
+canvas { width: 180px; height: 300px; border: 1px solid var(--cp-border-strong); border-radius: 0.625rem; }
+code { font-family: Consolas, "Courier New", Courier, monospace; }
+a { color: var(--cp-link); }
+table { border-collapse: collapse; width: 100%; }
+td, th { text-align: left; padding: 8px; border-bottom: 1px solid var(--cp-border); }
+#error { color: var(--cp-danger); }
+@media(max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+@media(max-width: 550px) { main { padding: 12px; } .stats { grid-template-columns: 1fr; } .map { grid-template-columns: 1fr; } .fields { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Nihonto reflection geometry</h1>
+<p class="muted">An adjustable geometric model, not a prediction of hamon contrast or a calibrated photograph. All distances are in millimeters.</p>
+<p class="note"><strong>Two separate choices:</strong> framing sets camera distance; local surface tilt sets the light angle. Low side lighting can reveal scattered detail while missing the smooth face's mirror reflection entirely.</p>
+<div class="layout">
+<aside>
+<section class="card">
+<h2>Cross-section controls</h2>
+<div id="sliders"></div>
+<p><label><input id="left" type="checkbox" checked> Left tube</label> &nbsp; <label><input id="right" type="checkbox" checked> Right tube</label></p>
+<button id="low">Low side lights</button>
+<button id="raised">Raised lights</button>
+<button id="match">Match normal to right tube</button>
+<button id="flat">Flat surface</button>
+<p><small>The tubes are symmetric, parallel to the blade length, and 1219.2 mm (48 in) long. Height h is above the selected blade-center surface, not above the table. Offset d is from the blade centerline, not from its edge.</small></p>
+</section>
+<section class="card">
+<h2>Frame / stitch planner</h2>
+<div class="fields">
+<label>Length to cover B (mm)<input id="B" type="number" value="700" min="1" max="3000"></label>
+<label>Length per frame F (mm)<input id="F" type="number" value="70" min="5" max="500"></label>
+<label>Overlap (%)<input id="overlap" type="number" value="35" min="0" max="90"></label>
+<label>Focal length f (mm)<input id="f" type="number" value="60" min="10" max="300"></label>
+<label>Sensor side along blade<select id="sensor"><option value="35.9">35.9 mm (long side)</option><option value="23.9">23.9 mm (short side)</option></select></label>
+</div>
+<p id="planner"></p>
+<button id="useHeight">Use thin-lens u as H estimate</button>
+<p><small>u is measured from the front principal plane. H is measured from the entrance pupil. These are not generally the same place. Sensor distance u + v is only a thin-lens estimate; lens-front working distance requires the exact lens. Measure framing with a ruler at blade height.</small></p>
+<p id="error" role="alert"></p>
+</section>
+</aside>
+<div>
+<section class="card">
+<h2>View along the blade: end-on cross-section</h2>
+<svg id="scene" viewBox="0 0 900 520" role="img" aria-label="End-on diagram of camera, blade, light tubes and ideal reflection ray"></svg>
+<div class="stats">
+<div class="stat"><strong id="angle"></strong>normal tilt matching right tube center</div>
+<div class="stat"><strong id="range"></strong>right tube's central normal range</div>
+<div class="stat"><strong id="flatPoint"></strong>flat-face reflection x coordinate</div>
+</div>
+<p id="status" class="note" aria-live="polite"></p>
+<p class="muted">Rose circles: tubes. Rose dashed ray: the direction a mirror surface must see a source to send light into the camera. Green: surface normal. Gray: line to camera. Camera drawn at its entrance pupil. Cross-section is at y = camera y; tubes disappear here when the camera is past their ends.</p>
+<button id="export">Download editable Excalidraw diagram</button>
+</section>
+<section class="card">
+<h2>Ideal mirror-hit footprint within one section</h2>
+<div class="map">
+<canvas id="footprint" width="120" height="200" role="img" aria-label="Blade sampling grid: rose indicates reflection rays that intersect an enabled tube"></canvas>
+<div>
+<p><strong id="hitFraction"></strong> of sampled surface points reflect an enabled tube into a point-sized camera pupil.</p>
+<p>Rose = tube visible in ideal reflection. Background = neither tube visible. A dark result <strong>does not mean the real blade will be black</strong>: scattering, ambient light, surface texture and polish are deliberately omitted.</p>
+<p id="mapDimensions"></p>
+<p>Each point uses its own viewing direction and actual tilted-plane height. The tubes are finite closed cylinders, modeled as emitting over their entire surfaces. This is a geometric map in blade coordinates, stretched to fit the panel, not a perspective camera render.</p>
+<p><small>No lens-barrel or stand occlusion, finite aperture, emission-angle limits, diffraction, Fresnel weighting, roughness, scratches, or measured blade profile. One uniformly tilted plane cannot model a real sword's multiple facets and curvature. The two sides of an actual blade need not have symmetric normals.</small></p>
+</div>
+</div>
+</section>
+<section class="card">
+<h2>The math</h2>
+<p>At the blade center, the camera is directly above. Let alpha be the local normal tilt toward the right tube, measured from vertical. The surface itself has the same tilt magnitude relative to horizontal.</p>
+<p><code>theta = atan2(d, h); &nbsp; alpha = theta / 2; &nbsp; h = d / tan(2 alpha)</code></p>
+<p>For a horizontal mirror surface and a right tube center at (d, h), with camera at (0, H):</p>
+<p><code>x = H d / (H + h)</code></p>
+<p>This is the reflection point for an ideal line-source center in the same cross-section. It must lie on the blade. At the exact center of a flat face, a side tube never supplies the direct specular ray unless its emitting area reaches the vertical direction.</p>
+<p>General 3D form, with vectors pointing away from surface point P:</p>
+<p><code>v = normalize(C - P)<br>n = normalize(l + v)<br>q = 2 dot(n, v) n - v</code></p>
+<p>The ray <code>P + t q</code>, for positive t, must intersect an emitting surface. The simulation tests intersections with the actual finite cylinders. For tube radius r at center distance R, the central cross-section normal half-width is <code>asin(r/R)/2</code>.</p>
+<h3>Camera and stitching</h3>
+<p><code>m = sensorSide / F<br>u = f (1 + 1/m)<br>v_image = f (1 + m)<br>step = F (1 - overlap)<br>N = 1 + ceil(max(0, B - F) / step)</code></p>
+<p>Here m is positive magnification magnitude. Sensor size is 35.9 x 23.9 mm for Nikon Z5II in FX mode. Camera pupil height in the ray model remains independently adjustable because focal length alone does not determine it.</p>
+<h3>Suggested experiment, not a universal optimum</h3>
+<p>Start with one tube at d = 80 mm, sweep h through 20, 100, 250 and 450 mm, and compare the same patch at fixed exposure. These select central normals around 38, 19, 9 and 5 degrees. Then add the second tube only if it improves the features you want. Maximum mirror brightness need not maximize detail contrast.</p>
+<p>For stitching, translate without changing camera height or orientation; lock exposure, focus and white balance. Compare overlapping details before a full run. Changed viewing directions can change highlights even when illumination is unchanged.</p>
+<h3>Sources and boundaries</h3>
+<p>Equations and examples are derived for this idealized setup. References:
+<a href="https://pbr-book.org/4ed/Reflection_Models/Specular_Reflection_and_Transmission">PBRT: reflection law</a>;
+<a href="https://pbr-book.org/4ed/Reflection_Models/Roughness_Using_Microfacet_Theory">PBRT: half-vector and roughness</a>;
+<a href="https://openstax.org/books/college-physics-2e/pages/25-6-image-formation-by-lenses">OpenStax: thin lenses</a>;
+<a href="https://onlinemanual.nikonimglib.com/z5II/en/specifications_379.html">Nikon: Z5II specifications</a>;
+<a href="https://www.edmundoptics.com/knowledge-center/tech-tools/imaging-system-parameter-calculator/">Edmund Optics: framing and magnification</a>;
+<a href="https://www.keyence.com/products/vision/resources/vision-resources/basics-of-lighting-selection.jsp">KEYENCE: bright-field versus dark-field illumination</a>.</p>
+</section>
+</div>
+</div>
+</main>
+<script id="model">
+"use strict";
+const DEG = Math.PI / 180;
+const TUBE_LENGTH = 1219.2;
+const controls = [
+  ["H", "Pupil height H", 100, 600, 1, 180, "mm"],
+  ["h", "Tube center height h", 5, 700, 1, 250, "mm"],
+  ["d", "Tube center offset d", 20, 400, 1, 80, "mm"],
+  ["diameter", "Emitting tube diameter", 5, 100, 1, 25, "mm"],
+  ["alpha", "Local normal tilt alpha", -45, 45, 0.1, 0, "deg"],
+  ["width", "Blade projected width", 10, 70, 1, 35, "mm"],
+  ["cy", "Camera y along tube length", -750, 750, 1, 0, "mm"]
+];
+function dot(a,b) { return a.reduce((s,x,i) => s+x*b[i],0); }
+function unit(a) { const m = Math.hypot(...a); return a.map(x => x/m); }
+function reflected(v,n) { const a=2*dot(v,n); return n.map((x,i) => a*x-v[i]); }
+function normal(alpha) { return [Math.sin(alpha*DEG),0,Math.cos(alpha*DEG)]; }
+function cylinderHit(p,q,cx,h,r,length=TUBE_LENGTH) {
+  const ox=p[0]-cx, oz=p[2]-h, half=length/2;
+  const a=q[0]*q[0]+q[2]*q[2], b=2*(ox*q[0]+oz*q[2]);
+  const c=ox*ox+oz*oz-r*r, disc=b*b-4*a*c;
+  const candidates=[];
+  if(a>1e-14 && disc>=-1e-10) {
+    const root=Math.sqrt(Math.max(0,disc));
+    for(const t of [(-b-root)/(2*a),(-b+root)/(2*a)]) {
+      if(t>1e-8 && Math.abs(p[1]+t*q[1])<=half+1e-8) candidates.push(t);
+    }
+  }
+  if(Math.abs(q[1])>1e-14) {
+    for(const y of [-half,half]) {
+      const t=(y-p[1])/q[1];
+      if(t>1e-8 && (ox+t*q[0])**2+(oz+t*q[2])**2<=r*r+1e-8) candidates.push(t);
+    }
+  }
+  return candidates.length ? Math.min(...candidates) : Infinity;
+}
+function sample(p,s) {
+  const n=normal(s.alpha), v=unit([-p[0],s.cy-p[1],s.H-p[2]]);
+  if(dot(n,v)<=0) return {hit:false,q:[0,0,0]};
+  const q=reflected(v,n), distances=[];
+  if(s.left) distances.push(cylinderHit(p,q,-s.d,s.h,s.diameter/2));
+  if(s.right) distances.push(cylinderHit(p,q,s.d,s.h,s.diameter/2));
+  return {hit:distances.some(Number.isFinite), q};
+}
+function opticalPlan(B,F,overlap,f,sensor) {
+  const m=sensor/F, u=f*(1+1/m), v=f*(1+m), step=F*(1-overlap);
+  return {m,u,v,step,count:1+Math.ceil(Math.max(0,B-F)/step-1e-12),crossF:F*(sensor===35.9?23.9:35.9)/sensor};
+}
+function centralAngles(s) {
+  const a=Math.atan2(s.d,s.h)/DEG/2;
+  const half=Math.asin(Math.min(1,s.diameter/2/Math.hypot(s.d,s.h)))/DEG/2;
+  return {a,half};
+}
+function sceneShapes(s) {
+  const shapes=[], scale=Math.min(700/(2*s.d+s.diameter+80),390/(Math.max(s.H,s.h+s.diameter/2)+45));
+  const X=x=>450+x*scale, Z=z=>445-z*scale;
+  function line(x1,z1,x2,z2,color="gray",dash=false) { shapes.push({type:"line",x:X(x1),y:Z(z1),x2:X(x2),y2:Z(z2),color,dash}); }
+  function text(x,y,text,size=16) { shapes.push({type:"text",x,y,text,size}); }
+  text(24,18,"Cross-section at the camera's y position (to scale)",18);
+  line(-400/scale,0,400/scale,0,"gray",true);
+  const w=s.width/2, z=x=>-x*Math.tan(s.alpha*DEG);
+  line(-w,z(-w),w,z(w),"text");
+  text(X(w)+8,Z(z(w))+20,"blade");
+  const n=normal(s.alpha), normalLength=Math.min(90,s.H*0.55);
+  line(0,0,n[0]*normalLength,n[2]*normalLength,"green");
+  text(X(n[0]*normalLength)+8,Z(n[2]*normalLength),"normal");
+  line(0,0,0,s.H,"gray");
+  shapes.push({type:"ellipse",x:X(0)-7,y:Z(s.H)-7,w:14,h:14,color:"text"});
+  text(X(0)+14,Z(s.H)+4,`camera pupil H = ${s.H}`);
+  const q=sample([0,s.cy,0],s).q;
+  const rayLength=360/scale;
+  line(0,0,q[0]*rayLength,q[2]*rayLength,"rose",true);
+  for(const [sign,enabled,name] of [[-1,s.left,"left"],[1,s.right,"right"]]) {
+    if(Math.abs(s.cy)>TUBE_LENGTH/2) continue;
+    shapes.push({type:"ellipse",x:X(sign*s.d)-s.diameter*scale/2,y:Z(s.h)-s.diameter*scale/2,w:s.diameter*scale,h:s.diameter*scale,color:enabled?"rose":"gray"});
+    text(X(sign*s.d)-45,Z(s.h)-s.diameter*scale/2-12,`${name} tube`);
+  }
+  text(24,494,`h = ${s.h} mm; d = ${s.d} mm from centerline; normal tilt = ${s.alpha.toFixed(1)} deg`);
+  return shapes;
+}
+function toExcalidraw(s) {
+  const colors={rose:"#e67700",green:"#2f9e44",gray:"#495057",text:"#000000"};
+  const elements=sceneShapes(s).map((a,i)=>{
+    const base={id:`geometry-${i}`,angle:0,strokeColor:colors[a.color]||"#000000",backgroundColor:"transparent",fillStyle:"solid",strokeWidth:2,strokeStyle:a.dash?"dashed":"solid",roughness:0,opacity:100,groupIds:[],frameId:null,roundness:null,seed:i+1,version:1,versionNonce:i+1,isDeleted:false,boundElements:null,updated:1,link:null,locked:false};
+    if(a.type==="text") return {...base,type:"text",x:a.x,y:a.y-18,width:Math.max(20,a.text.length*a.size*0.65),height:a.size*2.5,text:a.text,originalText:a.text,fontSize:a.size,fontFamily:2,textAlign:"left",verticalAlign:"top",containerId:null,lineHeight:1.25,autoResize:true};
+    if(a.type==="ellipse") return {...base,type:"ellipse",x:a.x,y:a.y,width:a.w,height:a.h};
+    return {...base,type:"line",x:a.x,y:a.y,width:Math.abs(a.x2-a.x),height:Math.abs(a.y2-a.y),points:[[0,0],[a.x2-a.x,a.y2-a.y]],startBinding:null,endBinding:null,startArrowhead:null,endArrowhead:null};
+  });
+  return {type:"excalidraw",version:2,source:"nihonto-lighting",elements,appState:{viewBackgroundColor:"#ffffff"},files:{}};
+}
+function init() {
+  const $=id=>document.getElementById(id);
+  $("sliders").innerHTML=controls.map(([id,label,min,max,step,value,unit])=>`<div class="control"><label for="${id}">${label}<output id="${id}Value">${value} ${unit}</output></label><input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}"></div>`).join("");
+  function state() { return {...Object.fromEntries(controls.map(([id])=>[id,Number($(id).value)])),left:$("left").checked,right:$("right").checked}; }
+  function plan() {
+    const fields=["B","F","overlap","f"];
+    if(fields.some(id=>!$(id).checkValidity() || $(id).value==="" || !Number.isFinite(Number($(id).value)))) {
+      $("error").textContent="Enter valid values within the displayed input ranges.";
+      return null;
+    }
+    $("error").textContent="";
+    return opticalPlan(Number($("B").value),Number($("F").value),Number($("overlap").value)/100,Number($("f").value),Number($("sensor").value));
+  }
+  function update() {
+    const s=state(), p=plan();
+    for(const [id,,,,,,unit] of controls) $(id+"Value").textContent=`${s[id]} ${unit}`;
+    const colors={rose:"var(--cp-accent)",green:"var(--cp-success)",gray:"var(--cp-border-strong)",text:"var(--cp-text)"};
+    $("scene").replaceChildren();
+    for(const a of sceneShapes(s)) {
+      const el=document.createElementNS("http://www.w3.org/2000/svg",a.type);
+      if(a.type==="text") {
+        el.setAttribute("x",a.x); el.setAttribute("y",a.y); el.setAttribute("font-size",a.size);
+        el.setAttribute("fill","var(--cp-text)"); el.textContent=a.text;
+      } else {
+        el.setAttribute("stroke",colors[a.color]); el.setAttribute("stroke-width",a.color==="text"?4:2);
+        el.setAttribute("fill","none");
+        if(a.dash) el.setAttribute("stroke-dasharray","7 5");
+        const attrs=a.type==="line"?{x1:a.x,y1:a.y,x2:a.x2,y2:a.y2}:{cx:a.x+a.w/2,cy:a.y+a.h/2,rx:a.w/2,ry:a.h/2};
+        for(const [k,v] of Object.entries(attrs)) el.setAttribute(k,v);
+      }
+      $("scene").append(el);
+    }
+    const {a,half}=centralAngles(s);
+    $("angle").textContent=`${a.toFixed(2)} deg`;
+    $("range").textContent=`${(a-half).toFixed(2)} to ${(a+half).toFixed(2)}`;
+    $("flatPoint").textContent=`${(s.H*s.d/(s.H+s.h)).toFixed(1)} mm`;
+    const center=sample([0,s.cy,0],s);
+    $("status").textContent=center.hit
+      ?"The center point reflects an enabled tube into the camera in this ideal mirror model."
+      :"The center point misses both enabled tubes in this ideal mirror model. Real scattered detail can still be visible.";
+    if(Math.abs(s.cy)>TUBE_LENGTH/2) $("status").textContent+=" Camera is beyond the tube ends; central angle readouts are hypothetical cross-section values.";
+    if(s.h-s.diameter/2 < s.width/2*Math.abs(Math.tan(s.alpha*DEG))) $("status").textContent+=" The tube extends below the highest blade point; check physical clearances.";
+    if(s.d-s.diameter/2 <= s.width/2) $("status").textContent+=" Tube footprint overlaps the blade width; check clearance and camera occlusion.";
+    const canvas=$("footprint"), ctx=canvas.getContext("2d"), css=getComputedStyle(document.documentElement);
+    ctx.fillStyle=css.getPropertyValue("--cp-surface-soft"); ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(!p) {
+      $("planner").textContent="Framing calculation unavailable until input is corrected.";
+      $("hitFraction").textContent="Unavailable";
+      $("mapDimensions").textContent="";
+      return;
+    }
+    const F=Number($("F").value);
+    $("planner").innerHTML=`<strong>${p.count} frames</strong>, ${p.step.toFixed(1)} mm step.<br>Magnification ${p.m.toFixed(3)}x; cross-frame field ${p.crossF.toFixed(1)} mm.<br>Front principal plane u: <strong>${p.u.toFixed(1)} mm</strong>.<br>Thin-lens sensor distance u + v: <strong>${(p.u+p.v).toFixed(1)} mm</strong>.`;
+    if(p.crossF<s.width) $("planner").innerHTML+="<br><strong>Warning: nominal field is narrower than the blade.</strong>";
+    let hits=0;
+    ctx.fillStyle=css.getPropertyValue("--cp-accent");
+    for(let j=0;j<canvas.height;j++) for(let i=0;i<canvas.width;i++) {
+      const x=((i+0.5)/canvas.width-0.5)*s.width, y=s.cy+(0.5-(j+0.5)/canvas.height)*F;
+      if(sample([x,y,-x*Math.tan(s.alpha*DEG)],s).hit) { ctx.fillRect(i,j,1,1); hits++; }
+    }
+    $("hitFraction").textContent=`${(100*hits/(canvas.width*canvas.height)).toFixed(1)}%`;
+    $("mapDimensions").textContent=`Sampled width ${s.width} mm; length ${F} mm; y center ${s.cy} mm. ${p.crossF<s.width?"This grid includes blade areas beyond the nominal camera field.":""}`;
+  }
+  for(const el of document.querySelectorAll("input,select")) el.addEventListener("input",update);
+  function preset(values) { for(const [k,v] of Object.entries(values)) $(k).value=v; update(); }
+  $("low").onclick=()=>preset({h:20,d:80,alpha:0});
+  $("raised").onclick=()=>preset({h:250,d:80,alpha:0});
+  $("flat").onclick=()=>preset({alpha:0});
+  $("match").onclick=()=>preset({alpha:centralAngles(state()).a.toFixed(1)});
+  $("useHeight").onclick=()=>{
+    const p=plan();
+    if(!p) return;
+    if(p.u<100||p.u>600) { $("error").textContent="Calculated u is outside the H slider range (100-600 mm); no value changed."; return; }
+    preset({H:Math.round(p.u)});
+  };
+  $("export").onclick=()=>{
+    const blob=new Blob([JSON.stringify(toExcalidraw(state()),null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob), a=document.createElement("a");
+    a.href=url; a.download="nihonto-geometry.excalidraw"; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+  };
+  update();
+}
+if(typeof module!=="undefined") module.exports={normal,unit,dot,reflected,cylinderHit,sample,opticalPlan,centralAngles,sceneShapes,toExcalidraw,controls};
+if(typeof document!=="undefined") init();
+</script>
+</body>
+</html>

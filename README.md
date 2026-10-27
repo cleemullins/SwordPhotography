@@ -124,6 +124,7 @@ These images are built from each frame's embedded JPEG preview and regenerated w
 | [`docs/images/`](docs/images/) | The README's images, including the full-resolution box top |
 | [`docs/INSTRUCTIONS.md`](docs/INSTRUCTIONS.md) | Step-by-step: setup, calibration, running a scan |
 | [`docs/HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md) | Design notes and everything learned getting it working |
+| [`docs/lighting/LightingSetupSkill.md`](docs/lighting/LightingSetupSkill.md) | Lighting handoff: current setup, trial positions, reflection geometry, offline simulator, and next measurements |
 | [`docs/slider_positions.md`](docs/slider_positions.md) | Measured slider travel and positions |
 | [`docs/example_scan_log.csv`](docs/example_scan_log.csv) | The log from the first scan |
 
