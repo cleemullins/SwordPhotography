@@ -18,6 +18,9 @@ npm run dev
 
 Open <http://127.0.0.1:5173>. Initial GPU shader compilation can take a moment.
 Unsupported GPUs produce an explicit message, not a rasterized substitute.
+`npm run dev` is a long-running preview server: Vite's **ready** message means
+startup completed; the process intentionally stays running. Keep it running
+while using the app, and use Ctrl+C in its terminal when finished.
 
 ```powershell
 npm test
@@ -52,9 +55,11 @@ account, or cloud rendering service is needed.
 - Both emitters are finite **1200 mm cylinders along X**, not point
   lights. The top view uses actual X/Y coordinates and one physical scale for
   tube length/diameter, the blade silhouette and camera footprint at Z=0.
-  Positive Y points up. Opposite-side or same-side placements match the end-on
-  controls; height remains an end-on measurement. Its fixed-origin framing reserves
-  the full scan envelope so table translation does not move or rescale the tubes.
+  X runs horizontally along the blade and positive Y points up. In the end-on
+  diagram, Y runs horizontally and height runs vertically. Opposite-side or
+  same-side placements match the same rig settings; Left/Right identify sources,
+  not enforced sides. Its fixed-origin framing reserves the full base-to-tip
+  scan envelope so ordinary scanning does not move or rescale the tubes.
   Default centers are X=0. **Center tube spans on blade**
   in advanced alignment centers both on the current table position once.
   Suggestions preserve longitudinal offsets; table movement never moves the tubes.
@@ -124,10 +129,10 @@ A finite-strip/microfacet approximation predicts illumination and sensitivity to
 small normal and polish changes. The search prioritizes the weakest sampled section's
 area-weighted coverage, then average coverage and grain contrast. Coverage uses
 the weaker response across the average polish and sharper grains with small normal
-perturbations, so a broad average reflection does not hide dark fine-grain regions.
-Opposing contrast
-responses are weighted by each tube's actual brightness and on/off state and can
-cancel rather than being counted twice. Candidate shortlists retain
+perturbations, reducing the risk that a broad average reflection hides dark
+fine-grain regions. Opposing contrast responses are weighted by each tube's
+actual brightness and on/off state and can cancel rather than being counted
+twice. Candidate shortlists retain
 solutions for difficult sections, including the kissaki. This is a bounded physical
 heuristic, not a guarantee of the global optimum or a measured camera prediction.
 
@@ -242,24 +247,27 @@ by aligning the table transversely and expanding coverage only if necessary. It
 preserves scan position and tube positions, and is unavailable while the rig is
 locked. **Meter once** may improve readability but prioritizes the blade.
 
+## Hardware reference
+
+These are user-supplied equipment specifications, not measurements made by the app.
+
+| Equipment | Supplied specification | Current simulation |
+|---|---|---|
+| Nikon Z5II | FX BSI-CMOS; 35.9 x 23.9 mm; 24.5 effective MP; 6048 x 4032 native pixels | Uses the physical sensor dimensions for projection. Native resolution is metadata, not the saved-preview resolution. ISO is fixed at 100; sensor noise and spectral response are not modeled. |
+| Two GVM-PRO-BD45R photography fill lights | Each housing 50 x 46 x 1200 mm; 45 W electrical input; 660 LEDs; CRI >= 97; 1.6 kg | Each emitter is a finite 1200 mm cylinder, with 46 mm default diameter. This is a geometric approximation, not the measured diffuser. |
+| Light output | 750 lux at 1 m; 2180 lux at 0.5 m | Reference illuminance, **not lumens** or a complete beam profile. Output and camera exposure remain uncalibrated. |
+| Color and effects | 2700-10000 K; hue 0-360 degrees; saturation 0-100%; five light modes and pixel FX | Fixed approximate 5600 K RGB emission; no RGB/effect modes or spectral/CRI simulation. |
+| Fixture controls | Bluetooth app, MESH networking, manual and DMX | No hardware connection or control. |
+
+The supplied 1200 mm housing length replaces the earlier nominal 48-inch span.
+Saved custom diameters are preserved; **Use 46 mm emitter approximation** applies
+the default size explicitly without changing positions or exposure. Housing
+dimensions do not define the exact illuminated length or angular emission.
+Brightness is relative: 100% is the model reference; values above 100% are
+simulation boost, not physical dimmer settings.
+
 ## Interpretation and limitations
 
-- The supplied fixture is the **GVM-PRO-BD45R** photography fill light:
-  50 x 46 x 1200 mm housing, 45 W electrical input, 660 LEDs, CRI >= 97,
-  1.6 kg, 2700-10000 K, hue 0-360 degrees, saturation 0-100%, five light modes
-  and pixel FX. Controls are Bluetooth app, MESH networking, manual and DMX.
-  Stated illuminance is **750 lux at 1 m** and **2180 lux at 0.5 m**; these are
-  not lumen ratings. These user-supplied reference figures are not a measured
-  beam profile or a camera calibration.
-  The earlier nominal 48-inch span is replaced by the 1200 mm housing length.
-  New setups use a 46 mm-diameter cylindrical emitter approximation. Saved custom
-  diameters are preserved; **Use 46 mm emitter approximation** applies that size
-  explicitly without changing positions or exposure. The housing dimensions do
-  not define the exact diffuser shape, illuminated length, or angular emission.
-  Output remains relative: 100% is the model reference and values above 100% are
-  simulation boost, not a physical dimmer setting. The preview remains fixed at
-  approximate 5600 K; RGB effects, CRI/spectral response and hardware control are
-  not simulated.
 - The blade is representative, not reconstructed from the museum photographs.
   Historical presets reproduce only the published measurements, not a scanned
   surface. The model uses a simplified flat mune and omits grooves, tang and fittings.
@@ -274,7 +282,7 @@ locked. **Meter once** may improve readability but prioritizes the blade.
   its ends. Relative brightness is not a calibrated lux or lumen measurement.
 - The room has no ambient illumination. A dark diffuse bed sits 35 mm below the
   blade reference plane.
-- Light paths are false-colored per-source contributions, including indirect
+- **Light contributions** is a false-colored per-source view, including indirect
   transport within a six-scattering-event budget.
 - Clipping flags exposed linear channels >= 1 before Reinhard tone mapping.
   It does not predict actual Nikon sensor saturation.
@@ -291,6 +299,10 @@ locked. **Meter once** may improve readability but prioritizes the blade.
   use the actual tracing resolution and current sample count, not the smaller CSS
   canvas size; saving early does not automatically wait for convergence.
   Frame-rate readouts describe display-loop throughput, not GPU completion.
+
+After renderer-code changes during development, reload the page if hot reload
+leaves an old GPU scene active. The saved setup remains in browser storage.
+This is separate from changing the rig or rerunning light placement.
 
 ## References and provenance
 

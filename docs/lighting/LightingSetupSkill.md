@@ -5,6 +5,16 @@
 Handoff for reproducing and continuing a discussion about lighting a polished
 Japanese sword blade (nihonto). Recorded October 27, 2026.
 
+**November 4 software update:** the implemented
+[Nihonto Lighting Studio](../../studio/README.md) is a separate WebGPU workbench.
+Its [product requirements](NIHONTO_STUDIO_PRD.md) and
+[technical design](NIHONTO_STUDIO_TECHNICAL_DESIGN.md) describe the fixed-rig scan
+workflow, whole-blade Auto, actual-position top view, always-sharp preview, metric
+tape and Nikon Z5II/GVM-PRO-BD45R references. The newly supplied GVM housing length
+is 1200 mm; the studio uses that instead of a nominal 48 inches. The original
+calculator and historical trial notes below retain their original assumptions.
+Neither the simulator nor this update establishes an experimentally optimal rig.
+
 The immediate goal is to determine useful tube-light heights and lateral offsets
 for an overhead camera. The user wants concrete placement instructions, supported
 by reflection geometry, rather than further discussion of stitching technique.

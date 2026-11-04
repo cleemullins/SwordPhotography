@@ -113,10 +113,17 @@ These images are built from each frame's embedded JPEG preview and regenerated w
 
 The [Nihonto Lighting Studio](studio/README.md) is a separate browser application
 for experimenting with Nikon Z5II camera distance, lens settings, and two adjustable
-1200 mm GVM-PRO-BD45R tube approximations around a parameterized blade. It uses always-sharp WebGPU path tracing,
-offers per-light, clipping, and framing diagnostics, and saves reproducible setups
-and previews. Suggest a single lighting arrangement across the whole blade, then
-lock the rig and inspect overlapping scan positions without changing the exposure.
+1200 mm GVM-PRO-BD45R tube approximations around a parameterized blade. It uses
+always-sharp WebGPU path tracing, offers per-light, clipping, and framing
+diagnostics, and saves reproducible setups and previews. Suggest a single lighting
+arrangement across the whole blade, then lock the rig and inspect overlapping scan
+positions without changing the exposure.
+
+Shutter, aperture and both brightness controls sit directly above the camera
+image. The top view shows actual tube/blade X/Y positions at one physical scale,
+while the end-on view controls side offset and height. The blade, not the camera
+or lights, moves during scan preview. A yellow metric tape moves with the table
+and is included in saved previews.
 It requires a supported desktop browser/GPU; the original offline
 [geometry calculator](docs/lighting/nihonto-lighting.html) remains available.
 
@@ -125,6 +132,10 @@ cd studio
 npm ci
 npm run dev
 ```
+
+Leave the development server running while using the preview. The studio plans
+lighting only; it does not operate the camera/slider or invoke the capture and
+stitching tools elsewhere in this repository.
 
 See the [PRD](docs/lighting/NIHONTO_STUDIO_PRD.md) and
 [technical design](docs/lighting/NIHONTO_STUDIO_TECHNICAL_DESIGN.md) for scope and

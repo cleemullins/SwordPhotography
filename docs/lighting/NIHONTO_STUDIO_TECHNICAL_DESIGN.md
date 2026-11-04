@@ -1,27 +1,21 @@
 # Nihonto Lighting Studio: Technical Choices
 
-**Design proposal | November 3, 2026**
+**Design and implementation notes | November 4, 2026**
 
 Companion to the [product requirements](NIHONTO_STUDIO_PRD.md).
-This document records the recommended technologies and their evaluation gates;
-it does not imply that the renderer has been implemented or benchmarked.
-
-**Implementation update:** the initial browser app now lives in
-[`studio`](../../studio/README.md), using the pinned WebGPU renderer and two
-independent light-contribution buffers. Its README documents the implemented
-behavior and remaining limitations; the proposals below retain their evaluation
-status unless explicitly implemented there.
+The application is implemented in [`studio`](../../studio/README.md). This
+document describes the current architecture and invariants, with deferred work
+and physical-calibration limits called out explicitly. Automated rendering
+coverage is not a benchmark or validation against a measured real blade/fixture.
 
 ## Direction and decision status
 
-Browser-based delivery is preferred. The parameterized 3D blade is the selected
-modeling direction, now exposed through a dedicated live Designer.
+The browser app is separate from `nihonto-lighting.html`, which remains an
+unchanged geometric reference. A parameterized blade and procedural materials
+are edited through the Nihonto Designer. The primary workflow configures a rig
+once, locks it, and translates only the blade/table through a simulated scan.
 
-Recommend building a new app alongside `nihonto-lighting.html`, retaining the
-existing calculator as a geometric reference. The stack below is recommended,
-but adoption of the path-tracing library depends on a focused rendering prototype.
-
-## Recommended stack
+## Implemented stack
 
 | Layer | Choice | Rationale |
 |---|---|---|
@@ -31,15 +25,31 @@ but adoption of the path-tracing library depends on a focused rendering prototyp
 | Main viewport | One WebGPU-backed HTML canvas | Keep rendering, pixel-based diagnostics, and compositing on the GPU. |
 | Interaction overlays | SVG and HTML layered over the canvas | Crisp measurements, labels, framing guides, and handles. |
 | Setup diagrams | SVG | Top and end-on positioning aids without another photorealistic viewport. |
-| Model interchange | GLB/glTF and material maps | Portable derived geometry and imported assets. |
-| Saved setups | Versioned JSON; IndexedDB for local collections | Local persistence without a backend, with portable setup files. |
+| Saved setups | Versioned JSON, localStorage autosave, IndexedDB captures | Local persistence without a backend, with portable setup files and PNG previews. |
 | Verification | Vitest and Playwright, plus numerical/render comparisons | Exercise optics, geometry, controls, persistence, and browser behavior. |
 
-Pin a tested combination of Three.js, the path tracer, and its dependencies.
-Current upstream documentation describes WebGPU support; confirm the selected
-release or revision includes the required APIs before implementation.
+The renderer pins Three.js 0.186.1, `three-gpu-pathtracer` 0.0.27 and
+`three-mesh-bvh` 0.9.15. `pathtracer.d.ts` declares only APIs used and verified in
+that combination. Revalidate the integration when upgrading those dependencies.
+GLB/glTF interchange remains deferred; JSON stores editable definitions and
+material choices, not imported meshes.
 
 ## Canvas and rendering architecture
+
+World X runs along the blade, Y across it and Z vertically. Settings use
+millimeters; Three.js geometry uses meters. The stationary camera is above
+world X=0, Y=0, looking down at the reference plane Z=0.
+
+The top-view SVG in `TubeSpan` projects the actual X/Y coordinates of both tubes
+and the blade; it never assigns sources to decorative fixed rows. Use one scale
+for both axes, including tube length/diameter, the `bladeSection` silhouette and
+the camera footprint at Z=0. Positive Y projects upward. Its camera origin is
+fixed at (350, 140) in a 700 by 280 viewBox. Fit the full base-to-tip scan envelope
+as well as the tube extents and camera footprint, keeping the scale unchanged
+through ordinary scanning. Larger out-of-range translations may require refitting.
+The blade outline includes its table X/Y offsets and curvature. A source may be
+on either side, or both may be on the same side; names/colors are identities,
+not positional constraints. Height is deliberately absent from this projection.
 
 The end-on setup SVG uses a fixed bottom-center world origin at (230, 330) in a
 460 by 380 viewBox. Fit scale derives from current camera height, tube bounds, and
@@ -60,14 +70,15 @@ definition; the rendering integration updates camera, object transforms, materia
 or lights as appropriate. Do not run individual ray samples through React state.
 
 Use the main canvas for the camera image and pixel-based overlays. Use SVG/HTML
-for measurements and interaction. Display zoom must remain separate from focal
-length, camera height, and physical blade movement.
+for measurements and interaction. Display zoom remains separate from focal
+length, camera height, and physical blade movement. The main canvas renders two
+source-isolated copies of the physical scene, retaining both reflecting/occluding
+tubes in each copy. Combine their scene-linear contribution buffers before
+exposure and display mapping, rather than adding already-tone-mapped images.
 
-An eventual custom renderer is a contingency, not the starting plan. First
-evaluate whether the existing library can satisfy the requirements with a bounded
-extension.
+A custom renderer is not part of the current implementation.
 
-## Critical evaluation gate: finite tube lights
+## Finite tube lights and hardware reference
 
 Represent both tubes as finite emitting cylinders, each 1200 mm long, with
 explicit diameter, position, brightness, and independent enabled state.
@@ -81,8 +92,8 @@ displaced 2 micrometers from its facets to avoid self-intersection; the full fin
 length remains 1200 mm. This is a faceted-cylinder emitter, not a point or one
 rectangular replacement source. A six-bounce budget retains indirect transport.
 
-Tube diameter, angular emission profile, brightness units, and calibration remain
-open. An RGB approximation to 5600 K is not a measured LED spectrum.
+Exact diffuser dimensions, angular emission and absolute calibration remain
+unmeasured. An RGB approximation to 5600 K is not a measured LED spectrum.
 
 The supplied GVM-PRO-BD45R housing is 50 x 46 x 1200 mm. Use the housing length
 and a default 46 mm circular cross-section as an explicitly approximate emitter;
@@ -135,9 +146,9 @@ Preserve facet boundaries and surface-normal behavior: these determine reflectio
 placement. Evaluate whether directional polishing requires an anisotropic material
 extension rather than assuming ordinary roughness is sufficient.
 
-Save definitions and material settings with setups. GLB exports are derived assets,
-not replacements for the editable source definition. The Model editor manipulates
-the same parameters without changing the lighting workflow.
+Save definitions and material settings with setups. If GLB export is added later,
+it should be a derived asset, not a replacement for the editable source definition.
+The Designer manipulates the same parameters without changing the lighting workflow.
 
 Use the downloaded museum photographs as appearance and proportion references,
 not as relightable textures or calibrated material measurements. Do not paint
@@ -146,7 +157,7 @@ a separate modeling and validation problem.
 
 Hada selection is stored separately as `blade.hada`, with None as the legacy/default
 value. A deterministic millimeter-coordinate sampler supplies Itame warped grain,
-Mokume nested cellular rings, Masame longitudinal lines, and Ayasugi periodic arches.
+Mokume nested cellular rings, Masame longitudinal layers, and irregular Ayasugi waves.
 Domain warping, nested layers, intermittent chikei-like strands and sparse
 ji-nie-like microfacets supply roughness, neutral metallic reflectance and submicron
 normal maps. These are original material parameters, not photographed highlights.
@@ -184,9 +195,11 @@ are explicit one-shot actions, not part of state updates. Whole-blade-shot
 reconfiguration uses this solver with centered geometry, a 35 mm preferred lens
 and a 15% margin, including tape extents.
 
-Establish one internal physical-unit convention and explicitly convert UI units.
-Keep sensor dimensions configurable; Nikon Z5II FX dimensions are the proposed
-starting point inherited from the current calculator.
+Convert UI mm/in values explicitly to the millimeter settings model and meter
+geometry. Lens focal length stays in mm and the reference tape stays metric.
+The Nikon Z5II sensor specification is fixed application metadata in `SENSOR`,
+not a user-selectable sensor preset. `TUBE_FIXTURE` similarly holds the supplied
+GVM reference, while diameter remains an editable approximation.
 
 Define the camera's optical reference point and distinguish it from real-world
 sensor-to-blade or lens-front distances. Thin-lens optics will not reproduce exact
@@ -216,15 +229,16 @@ simulation exposure, not absolute photometry; ISO noise and motion blur are abse
 
 ## Analysis overlays
 
-| Overlay | Proposed implementation |
+| Control | Current implementation |
 |---|---|
-| Per-light contribution | Separate scene-linear contribution buffers, or separate evaluation passes if the renderer cannot produce these directly. |
-| Highlight clipping | Compare exposed linear values with an explicit saturation threshold before tone mapping; real sensor calibration remains separate. |
-| Framing and scale | Camera projection and known scene units, displayed as SVG guides. |
+| Inspect lighting | Select ordinary camera view, left-only, right-only or false-colored light contributions from the two linear buffers. This is not a traced-ray diagram. |
+| Highlight clipping | Flag exposed linear channels >= 1 before Reinhard tone mapping; real sensor saturation remains uncalibrated. |
+| Framing | Rule-of-thirds SVG overlay. Physical coverage and position are shown by the scan controls and setup diagrams. |
 
-These are application requirements, not assumed built-in library features.
-Overlays must reflect the current scene and remain independently toggleable.
-Clean view hides overlays without modifying the simulation.
+Clipping and framing are independent toggles; source modes are mutually exclusive.
+Clean view selects the ordinary camera image and clears overlays without modifying
+the simulation. Captures save the selected view and analysis state; the framing
+grid is drawn into a capture only when enabled.
 
 ### Fixed-rig scan state and reference tape
 
@@ -270,10 +284,11 @@ Include tape in frame restores visibility and transverse framing while preservin
 scan position and tube positions. It is an explicit setup action, not scan-time
 automation. Tape brightness remains governed by physical illumination and exposure.
 
-Per-light buffers could also allow fast brightness adjustments: with geometry,
-materials, and light emission patterns unchanged, scale and combine linear
-contributions before exposure and tone mapping. Preserve any non-tube contribution
-separately. Moving lights or the blade invalidates this reuse.
+Per-light buffers implement immediate brightness/on-off adjustments without
+resampling when geometry, materials and light emission patterns are unchanged.
+Shutter, EV and aperture-throughput changes also recompose those same buffers.
+Moving lights or the blade invalidates accumulation. The current environment is
+black; a non-tube environment contribution would require separate accounting.
 
 ## Interaction, refinement, and image integrity
 
@@ -281,11 +296,18 @@ Continue ray tracing during interaction at reduced resolution and sample count.
 Refine when stationary. Reset invalid accumulation after scene changes so the
 image does not retain reflections from a previous setup.
 
-Evaluate the library's adaptive frame budgets, resolution controls, and optional
-denoising/upscaling integration. Keep a raw accumulated view available: denoising,
-reflection filtering, sharpening, and sample clamping can obscure fine details
-or bias highlight measurements. Diagnostics should not depend on a cosmetically
-processed image.
+The implementation uses a 131072 frame budget per tracer, six scattering events,
+and no denoiser, glossy filter or highlight clamp. For 400 ms after a scene/quality
+change, interaction rendering is capped at 360 pixels wide. At rest, Fast preview
+caps width at 480, Balanced at 1200, and Fine detail uses 1200-2400 pixels, with
+device pixel ratio honored up to 2x. Resolution changes invalidate accumulation
+and asynchronous progress readbacks.
+
+Captures temporarily composite at the actual tracing dimensions, copy the image,
+and restore the display drawing buffer. They do not wait for the sample target.
+These are simulated previews, not native 6048 x 4032 Nikon files. Future denoising
+or filtering must be evaluated for lost fine detail and biased highlight
+measurements, rather than silently replacing the raw lighting response.
 
 Measure interaction latency, preview resolution, and time to a usable image, not
 just frame rate. The PRD's provisional targets are feedback within 100 ms and
@@ -305,25 +327,26 @@ where practical; retain source and license metadata for reference assets.
 Do not present a rasterized fallback as ray tracing. The existing geometric
 calculator can remain available as an explicitly different fallback tool.
 
-## First technical milestone and adoption criteria
+## Verification and remaining validation
 
-Build one curved, faceted parameterized blade, two movable finite tubes, a
-thin-lens camera, and a per-light diagnostic view before building the full UI.
+The repository includes Vitest numerical/state tests and Playwright coverage
+using installed Edge with real WebGPU. Layout/error-path tests can deliberately
+disable WebGPU; rendering tests must exercise the tracer rather than skip or
+substitute rasterized results.
 
-Evaluate:
+| Area | Coverage |
+|---|---|
+| Geometry/materials | Dimensions, curvature, normals, deterministic grain, packed UV/texture seams and quantization-safe normal slopes. |
+| Emitters and Auto | Finite tube intersections, outward-facing area panels, source power, current-position independence and explicit unavailable solutions. |
+| Fixed scan and controls | Lock enforcement, start/end/step behavior, quick-control synchronization, persistence and capture restoration. |
+| Top view and setup | Actual X/Y offsets, equal scale, same-side/opposite-side arrangements, stable tubes/camera across scanning, dragging and responsive layout. |
+| Real GPU output | Independent source contributions, grain at base/middle/kissaki under one rig, fine-detail capture resolution, shutter/aperture/brightness recomposition and physical tape capture. |
 
-1. Reflection locations against known mirror geometries and the existing calculator.
-2. Tube reflection shape and convergence across mirror-like and rougher materials.
-3. Camera framing, focus, aperture behavior, and translation in physical units.
-4. Responsiveness while moving the blade and lights, including acceleration-
-   structure update costs.
-5. Access to the linear data needed for overlays and unbiased comparisons.
-6. Raw versus denoised fine-detail preservation.
-
-Adopt the library if it meets these needs; use a bounded extension for missing
-sampling or diagnostics where practical. Consider a specialized WebGPU renderer
-only if those gaps cannot be addressed reliably. Visual plausibility alone is
-not sufficient evidence of physical accuracy.
+These are software regressions, not measured photometric accuracy or universal
+performance guarantees. Remaining work includes comparison against known real
+fixture emission and camera response, measured blade geometry/polish, and a
+repeatable performance benchmark on agreed hardware. GLB/glTF interchange and
+directional/spectral material extensions are future options, not shipped features.
 
 ## Sources reviewed
 

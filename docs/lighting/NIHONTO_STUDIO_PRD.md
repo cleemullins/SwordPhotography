@@ -1,9 +1,11 @@
 # Nihonto Lighting Studio
 
-**Product requirements draft | November 3, 2026**
+**Product requirements and implementation status | November 4, 2026**
 
-See [Technical Choices](NIHONTO_STUDIO_TECHNICAL_DESIGN.md) for the recommended
-browser stack, rendering approach, and evaluation gates.
+The browser application is implemented in [`studio`](../../studio/README.md).
+This document records the current product contract and remaining realism limits.
+See [Technical Choices](NIHONTO_STUDIO_TECHNICAL_DESIGN.md) for the implementation
+and its validation boundaries; future work is identified separately below.
 
 ## Purpose
 
@@ -39,7 +41,7 @@ for comparison and reproduction on the real rig.
 | Analysis | Optional overlays on the camera image to help explain and evaluate the lighting and camera setup. |
 | References | Approximately ten high-quality nihonto photographs or models to guide appearance and evaluation, with documented reuse rights. |
 
-## Proposed first-release UX
+## Implemented workflow and UX requirements
 
 The workflow is **Set up the fixed rig → Preview the scan → Save the rig**.
 The large camera image and scan strip sit beside a selected-object rig inspector.
@@ -72,6 +74,15 @@ Blade design is a separate editor, not an equal-priority settings tab.
   Place it alongside the rendered image, keeping the image visible while adjusting
   the rig. Keep it available at every screen size; stack panels rather than hiding
   controls on narrow screens.
+- **Top view:** derive tube and blade positions from the actual rig X/Y coordinates,
+  not fixed display rows. Show finite tube length/diameter, the blade silhouette,
+  and the camera footprint at the reference plane with equal along/across scale.
+  X runs along the blade; positive Y points up in this view. The camera origin
+  remains centered and framing reserves the full base-to-tip scan envelope.
+  Moving the table through that scan must not move or rescale the tubes.
+  Both opposite-side and same-side lighting arrangements must match the end-on
+  controls. Source names/colors identify tubes, not forced positions; height
+  belongs in the end-on view.
 - **Suggest light positions:** evaluate the entire blade, including the kissaki,
   as the table brings each section under the stationary camera. Choose one fixed
   pair of tube positions, prioritizing coverage of the weakest sampled section
@@ -86,7 +97,9 @@ Blade design is a separate editor, not an equal-priority settings tab.
   explicitly unlocks those controls. Import/restore opens unlocked for review.
 - **Metric reference:** a physical yellow tape alongside the blade moves with the
   table and appears in saved images. Use millimeter ticks, centimeter numbers,
-  and zero at the blade base; disclose reference-plane parallax.
+  and zero at the blade base; disclose reference-plane parallax. Include tape in
+  frame is an explicit setup action, not scan-time automation. Tape shares exposure
+  and may be dark when exposing for bright steel; do not make it an emissive overlay.
 - **Precision:** numeric fields for positions, sliders plus numeric fields for other
   parameters; selectable millimeters or inches.
   Explain checkbox behavior with hover tooltips and accessible descriptions,
@@ -98,16 +111,19 @@ Blade design is a separate editor, not an equal-priority settings tab.
   comparisons and scan positions separately; distinguish full-setup from rig-only
   restore so table movement is never a hidden side effect.
 
-### Proposed overlays
+### Inspection controls
 
 | Overlay | Purpose |
 |---|---|
 | Per-light contribution | Distinguish reflections and illumination attributable to each tube. |
 | Highlight clipping | Identify detail lost at the selected simulated exposure. |
-| Framing and scale | Show physical coverage, centerline, and blade position. |
+| Framing | Rule-of-thirds overlay; coverage and position are reported by the scan controls and physical setup diagrams. |
 
-Overlays are independently toggleable. A single Clean view control hides them
-without changing the scene. Image captures should support a clean version.
+Framing and clipping are independently toggleable. Camera, Left only, Right only
+and Light contributions are mutually exclusive display modes. Clean view selects
+the ordinary camera image and clears overlays without changing the scene.
+Save preview captures the selected mode and overlays; choose Clean view first
+when a clean image is needed.
 
 ## Rendering and optics principles
 
@@ -118,7 +134,7 @@ separate evaluation.
 
 ### Parameterized blade
 
-The Model tab edits nagasa, sori and curvature peak, base/yokote widths and spine
+The Nihonto Designer edits nagasa, sori and curvature peak, base/yokote widths and spine
 thicknesses, shinogi thickness/position, kissaki type/length, fukura, niku, and
 coupled facet angles. Keep dimensions independent of the derived mesh and material.
 Save the versioned definition with setups and comparisons.
@@ -137,18 +153,28 @@ Model finite tube emitters and perspective with an always-sharp preview.
 Use automatic setup focus and explicit exposure controls. Do not silently normalize brightness:
 light-intensity changes must remain visible. Optional aperture exposure compensation
 must be clearly labeled.
-Auto exposure is opt-in and meters combined linear light only on the blade, regardless
-of analysis overlays. Preserve aperture and light settings; vary shutter within
-1/8000-30 seconds at ISO 100. Protect blade highlights, show adjustment/limit status,
-and retain shutter with a warning when the blade is dark or out of view. Enabling
-auto resets exposure bias to zero; manual shutter editing returns to manual exposure.
+Meter once is an explicit setup action using combined linear light only on the
+blade, regardless of analysis overlays. Preserve aperture and light settings;
+vary shutter within 1/8000-30 seconds at ISO 100. Protect blade highlights, show
+adjustment/limit status, and retain shutter with a warning when the blade is dark
+or out of view. Applying metering resets EV bias to zero and disables aperture
+compensation. No continuous auto exposure runs during scanning.
 Clearly state that shutter values are simulation-relative, not calibrated guidance.
+
+Expose the supplied hardware specifications without overstating the model:
+GVM's 750 lux at 1 m and 2180 lux at 0.5 m are illuminance, not lumen ratings.
+The 1200 mm length and default 46 mm circular emitter approximate its housing;
+retain saved custom diameters until the user explicitly changes them. Nikon's
+native pixel dimensions do not imply full-resolution 24.5 MP preview exports.
+The [hardware reference](../../studio/README.md#hardware-reference) lists the
+complete supplied specifications and the distinctions from simulated behavior.
 
 Prioritize responsive feedback during interaction, then progressively refine the
 image at rest. Proposed engineering targets are feedback within **100 ms** and
 at least **20 fps** during adjustment at a reduced preview resolution on an agreed
 reference machine. These are evaluation targets, not committed performance claims;
-hardware, resolution, quality, and convergence criteria remain to be established.
+an agreed benchmark machine, scene, quality preset and convergence criterion are
+still needed before claiming those targets are met.
 
 ## Reference assets and realism boundaries
 
@@ -174,6 +200,16 @@ claiming reliable prediction of the actual blade's appearance.
   prepainted highlight. A disabled tube contributes no emitted illumination.
 - Independent brightness controls produce visible changes at fixed exposure.
 - Both tubes retain their physical length and 5600 K target throughout adjustments.
+- Top-view placement follows edits to each tube's X/Y and the blade's X/Y. Equal
+  scale and the actual blade outline make relative placement reproducible; tube
+  height changes do not masquerade as transverse motion.
+- Quick exposure and brightness controls stay beside the camera image, synchronize
+  with the inspector, and cannot change the locked rig.
+- One Auto suggestion is independent of the current scan position. Inspect base,
+  middle and kissaki with unchanged camera, lights, exposure and focus projection.
+  Report weak facets rather than silently correcting individual scan frames.
+- Metric tape is included in image captures, moves with the table, and can be
+  restored to the frame during setup without moving tubes or changing scan X.
 - Overlays correspond to the current scene and can be removed without altering it.
 - Saved setups restore camera, lighting, blade, scan, tape and exposure settings,
   with derived setup focus and legacy automation disabled.
@@ -184,15 +220,17 @@ claiming reliable prediction of the actual blade's appearance.
 
 ## Scope and next decisions
 
-**Recommended packaging:** a new app alongside the existing
-`nihonto-lighting.html` geometry calculator, preserving the calculator as a reference.
-This is a proposal, not a selected architecture.
+**Implemented packaging:** the React/TypeScript/Vite application in `studio`,
+using Three.js and WebGPU path tracing. It runs locally or as static HTTPS assets
+in a supported desktop browser. The existing `nihonto-lighting.html` calculator
+is retained unchanged as a separate geometric reference.
 
-Browser-based delivery is preferred. Technology evaluation should establish the
-rendering engine, supported GPU baseline, and responsiveness/quality tradeoff. It
-should also establish the blade parameterization and material model, sensor format (the current
-calculator uses Nikon Z5II FX dimensions), camera travel limits, tube diameter and
-emission characteristics, brightness units, and a calibration method.
+**Remaining evaluation:** real-fixture diffuser/beam measurements, absolute
+photometry and camera response, material calibration against measured blade
+photographs, directional polishing response, and reproducible performance
+measurements on reference hardware. Existing parameter ranges and presets are
+simulation choices, not assertions about measured physical travel or metallurgy.
+GLB/glTF model interchange is a possible extension, not a current feature.
 
 **Outside the initial scope:** physical camera/slider/DMX control, image stitching,
 automatic recovery of accurate 3D materials from photographs, and guaranteed
