@@ -57,8 +57,8 @@ test('GVM tube spans are 1200 mm, can be centered once, and remain fixed during 
   await noGPU(page); await page.goto('/')
   const ratio = await page.locator('.tube-span').evaluate(svg => {
     const tube = svg.querySelector<SVGLineElement>('.span-left')!
-    const blade = svg.querySelector<SVGLineElement>('.span-blade')!
-    return (tube.x2.baseVal.value - tube.x1.baseVal.value) / (blade.x2.baseVal.value - blade.x1.baseVal.value)
+    const blade = svg.querySelector<SVGPolygonElement>('.span-blade')!
+    return (tube.x2.baseVal.value - tube.x1.baseVal.value) / blade.getBBox().width
   })
   expect(ratio).toBeCloseTo(1200 / 700, 6)
   await page.getByLabel('Viewed position from base', { exact: true }).fill('250')
@@ -71,6 +71,55 @@ test('GVM tube spans are 1200 mm, can be centered once, and remain fixed during 
   await page.getByLabel('Viewed position from base', { exact: true }).fill('350')
   await expect.poll(async () => (await saved(page)).blade.x).toBe(0)
   expect((await saved(page)).lights.map(l => l.x)).toEqual([100, 100])
+})
+
+test('top view projects actual side offsets, blade translation and camera coverage at one scale', async ({ page }) => {
+  await noGPU(page); await page.goto('/')
+  const state = defaultState()
+  state.blade.definition.curvature = 0; state.blade.x = 75; state.blade.y = 35
+  state.lights[0].x = -30; state.lights[0].y = -160
+  state.lights[1].x = 90; state.lights[1].y = 210
+  await load(page, state)
+  await expect.poll(async () => (await saved(page)).lights[0].y).toBe(-160)
+  const geometry = () => page.locator('.tube-span').evaluate(svg => {
+    const origin = svg.querySelector<SVGCircleElement>('.top-camera-origin')!
+    const tubes = ['.span-left', '.span-right'].map(selector => {
+      const line = svg.querySelector<SVGLineElement>(selector)!
+      return { x: (line.x1.baseVal.value + line.x2.baseVal.value) / 2, y: line.y1.baseVal.value,
+        length: line.x2.baseVal.value - line.x1.baseVal.value, thickness: Number(line.getAttribute('stroke-width')) }
+    })
+    const blade = svg.querySelector<SVGPolygonElement>('.span-blade')!.getBBox()
+    const frame = svg.querySelector<SVGRectElement>('.top-camera-window')!
+    return { origin: { x: origin.cx.baseVal.value, y: origin.cy.baseVal.value }, tubes,
+      blade: { x: blade.x + blade.width / 2, y: blade.y + blade.height / 2, width: blade.width },
+      frame: { x: frame.x.baseVal.value + frame.width.baseVal.value / 2, y: frame.y.baseVal.value + frame.height.baseVal.value / 2,
+        width: frame.width.baseVal.value, height: frame.height.baseVal.value } }
+  })
+  const first = await geometry(), scale = first.tubes[0].length / 1200
+  for (const [i, tube] of first.tubes.entries()) {
+    expect(tube.x - first.origin.x).toBeCloseTo(state.lights[i].x * scale)
+    expect(first.origin.y - tube.y).toBeCloseTo(state.lights[i].y * scale)
+    expect(tube.thickness).toBeCloseTo(state.diameter * scale)
+  }
+  expect(first.blade.x - first.origin.x).toBeCloseTo(75 * scale)
+  expect(first.origin.y - first.blade.y).toBeCloseTo(35 * scale)
+  expect(first.frame.x).toBeCloseTo(first.origin.x, 3); expect(first.frame.y).toBeCloseTo(first.origin.y, 3)
+  expect(first.frame.width / first.frame.height).toBeCloseTo(35.9 / 23.9)
+  expect(first.tubes[0].y).toBeGreaterThan(first.blade.y)
+  expect(first.tubes[1].y).toBeLessThan(first.blade.y)
+  await page.getByRole('button', { name: 'Left light', exact: true }).click()
+  await page.getByLabel('Left rig offset', { exact: true }).fill('160')
+  const sameSide = await geometry()
+  expect(sameSide.tubes.every(tube => tube.y < sameSide.blade.y)).toBe(true)
+  await page.getByRole('button', { name: 'Lock rig / Preview scan' }).click()
+  await page.getByLabel('Viewed position from base', { exact: true }).fill('0')
+  const atBase = await geometry()
+  expect(atBase.tubes).toEqual(sameSide.tubes); expect(atBase.frame).toEqual(sameSide.frame)
+  expect(atBase.blade.x).not.toBe(sameSide.blade.x)
+  await page.getByLabel('Viewed position from base', { exact: true }).fill('700')
+  const atTip = await geometry()
+  expect(atTip.tubes).toEqual(sameSide.tubes); expect(atTip.frame).toEqual(sameSide.frame)
+  expect(atTip.blade.x).toBeLessThan(atBase.blade.x)
 })
 
 test('the camera stays visible while selecting and adjusting a tube on desktop', async ({ page }) => {

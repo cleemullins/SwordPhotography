@@ -320,7 +320,7 @@ export default function App() {
           {!locked && <div className="rig-actions"><button onClick={suggestLights}>Suggest light positions</button><button disabled={!ready || Boolean(gpuError) || metering || stats.samples < 8} onClick={() => void meterOnce()}>{metering ? 'Metering...' : 'Meter once'}</button></div>}
           <p className="shutter-readout">{shutterLabel(state.camera.shutter)} · ISO 100 · f/{state.camera.aperture.toFixed(1)} · {state.camera.focalLength.toFixed(1)} mm lens</p>
           <TubeSpan state={state} />
-          <p className="control-note">Two {TUBE_FIXTURE.model} fixtures, modeled as {TUBE_LENGTH} mm-long cylinders. Circles below are end-on cross-sections, not point lights. Their along-blade centers remain fixed while the table moves.</p>
+          <p className="control-note">Top view: actual along-blade and side offsets, at the same scale; +Y is up. The dashed camera footprint stays at the rig origin while the blade moves. Height is shown in the end-on view below. Two {TUBE_FIXTURE.model} fixtures, modeled as {TUBE_LENGTH} mm-long cylinders.</p>
           <details className="fixture-details"><summary>GVM fixture specifications and model limits</summary>
             <p>User-supplied specifications for each photography fill light.</p>
             <dl>

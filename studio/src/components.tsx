@@ -53,18 +53,35 @@ export function ShutterSlider({ value, onChange }: { value: number; onChange: (s
 }
 
 export function TubeSpan({ state }: { state: StudioState }) {
-  const half = state.blade.definition.length / 2
-  const min = Math.min(state.blade.x - half, ...state.lights.map(l => l.x - TUBE_LENGTH / 2)) - 50
-  const max = Math.max(state.blade.x + half, ...state.lights.map(l => l.x + TUBE_LENGTH / 2)) + 50
-  const X = (x: number) => 20 + (x - min) / (max - min) * 660
-  const fov = fieldOfView(state.camera).width
-  return <svg className="tube-span" viewBox="0 0 700 115" role="img" aria-label={`Top view: two ${TUBE_LENGTH} mm GVM tubes alongside the moving blade`}>
-    <text x="20" y="12">TOP VIEW · {TUBE_FIXTURE.model} · {TUBE_LENGTH} mm</text>
-    {state.lights.map((l, i) => <line key={i} x1={X(l.x - TUBE_LENGTH / 2)} x2={X(l.x + TUBE_LENGTH / 2)} y1={30 + i * 18} y2={30 + i * 18}
-      className={i === 0 ? 'span-left' : 'span-right'} opacity={l.enabled ? 1 : 0.3} />)}
-    <line x1={X(state.blade.x - half)} x2={X(state.blade.x + half)} y1="78" y2="78" className="span-blade" />
-    <rect x={X(-fov / 2)} y="63" width={X(fov / 2) - X(-fov / 2)} height="30" className="navigator-window" />
-    <text x={X(0)} y="110" textAnchor="middle">FIXED CAMERA WINDOW</text>
+  const d = state.blade.definition, fov = fieldOfView(state.camera)
+  const outline = Array.from({ length: 121 }, (_, i) => bladeSection(d, i / 120))
+  // Reserve the entire base-to-tip scan envelope so scanning does not rescale the fixed rig.
+  const extentX = Math.max(d.length, Math.abs(state.blade.x) + d.length / 2,
+    ...state.lights.map(l => Math.abs(l.x) + TUBE_LENGTH / 2), fov.width / 2)
+  const extentY = Math.max(...outline.flatMap(s => [
+    Math.abs(state.blade.y + (s.y - s.width / 2) * 1000),
+    Math.abs(state.blade.y + (s.y + s.width / 2) * 1000),
+  ]), ...state.lights.map(l => Math.abs(l.y) + state.diameter / 2), fov.height / 2)
+  const scale = Math.min(660 / (2 * extentX), 190 / (2 * extentY))
+  const X = (x: number) => 350 + x * scale
+  const Y = (y: number) => 140 - y * scale
+  const path = [...outline.map(s => `${X(state.blade.x + s.x * 1000)},${Y(state.blade.y + (s.y + s.width / 2) * 1000)}`),
+    ...outline.toReversed().map(s => `${X(state.blade.x + s.x * 1000)},${Y(state.blade.y + (s.y - s.width / 2) * 1000)}`)].join(' ')
+  return <svg className="tube-span" viewBox="0 0 700 280" role="img" aria-label={`Top view: actual X/Y positions of two ${TUBE_LENGTH} mm GVM tubes and the moving blade`}>
+    <desc>Equal scale along and across the blade. Positive Y is up. The camera footprint is at the blade reference plane; height is shown in the end-on diagram.</desc>
+    <text x="20" y="15">TOP VIEW (X/Y) · {TUBE_FIXTURE.model} · {TUBE_LENGTH} mm</text>
+    <line x1="20" x2="680" y1={Y(0)} y2={Y(0)} className="diagram-guide" />
+    {state.lights.map((l, i) => <line key={i} x1={X(l.x - TUBE_LENGTH / 2)} x2={X(l.x + TUBE_LENGTH / 2)} y1={Y(l.y)} y2={Y(l.y)}
+      strokeWidth={state.diameter * scale} className={i === 0 ? 'span-left' : 'span-right'} opacity={l.enabled ? 1 : 0.3}>
+      <title>{i === 0 ? 'Left' : 'Right'} tube: X {l.x.toFixed(1)} mm, Y {l.y.toFixed(1)} mm, height {l.height.toFixed(1)} mm</title>
+    </line>)}
+    <polygon points={path} className="span-blade" />
+    <rect x={X(-fov.width / 2)} y={Y(fov.height / 2)} width={fov.width * scale} height={fov.height * scale} className="navigator-window top-camera-window" />
+    <circle cx={X(0)} cy={Y(0)} r="3" className="top-camera-origin" />
+    <text x="20" y="267" className="top-left-label">LEFT TUBE</text>
+    <text x="170" y="267" className="top-right-label">RIGHT TUBE</text>
+    <text x="340" y="267">BLADE</text>
+    <text x="455" y="267">CAMERA FOOTPRINT</text>
   </svg>
 }
 

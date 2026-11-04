@@ -31,9 +31,13 @@ summary { cursor: pointer; font-size: 12px; color: var(--cp-text-soft); padding:
 .tube-summaries button { font-size: 10px; padding: 4px 0; text-align: left; justify-content: flex-start; }
 .tube-span { display: block; width: 100%; margin-top: 12px; overflow: hidden; }
 .tube-span text { fill: var(--cp-text-muted); font-family: var(--mono); font-size: 14px; }
-.tube-span .span-left { stroke: var(--cp-accent); stroke-width: 8; stroke-linecap: round; }
-.tube-span .span-right { stroke: var(--cp-success); stroke-width: 8; stroke-linecap: round; }
-.tube-span .span-blade { stroke: var(--cp-text-soft); stroke-width: 5; }
+.tube-span .span-left { stroke: var(--cp-accent); }
+.tube-span .span-right { stroke: var(--cp-success); }
+.tube-span .span-blade { fill: var(--cp-border-strong); stroke: var(--cp-text-soft); stroke-width: 1; }
+.tube-span .top-camera-window { stroke: var(--cp-text); stroke-dasharray: 4 3; }
+.tube-span .top-camera-origin { fill: var(--cp-text); }
+.tube-span .top-left-label { fill: var(--cp-accent); }
+.tube-span .top-right-label { fill: var(--cp-success); }
 .inspect-label { display: flex; align-items: center; gap: 8px; font-size: 11px; }
 .inspect-label select { width: auto; font-size: 11px; padding: 5px; }
 .render-details { min-width: 0; }

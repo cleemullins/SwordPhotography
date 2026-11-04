@@ -50,8 +50,12 @@ account, or cloud rendering service is needed.
   Drag handles or use arrows (1 mm; Shift: 10 mm). Offsets use the stationary
   camera origin, with blade-relative distances shown secondarily.
 - Both emitters are finite **1200 mm cylinders along X**, not point
-  lights. The top-view span diagram shows their full length; the circles are
-  end-on cross-sections. Default centers are X=0. **Center tube spans on blade**
+  lights. The top view uses actual X/Y coordinates and one physical scale for
+  tube length/diameter, the blade silhouette and camera footprint at Z=0.
+  Positive Y points up. Opposite-side or same-side placements match the end-on
+  controls; height remains an end-on measurement. Its fixed-origin framing reserves
+  the full scan envelope so table translation does not move or rescale the tubes.
+  Default centers are X=0. **Center tube spans on blade**
   in advanced alignment centers both on the current table position once.
   Suggestions preserve longitudinal offsets; table movement never moves the tubes.
 - **Exposure & light** stays directly above the camera image: shutter speed,
