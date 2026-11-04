@@ -109,6 +109,28 @@ These images are built from each frame's embedded JPEG preview and regenerated w
 
 ## What's here
 
+### Interactive lighting studio
+
+The [Nihonto Lighting Studio](studio/README.md) is a separate browser application
+for experimenting with Nikon Z5II camera distance, lens settings, and two adjustable
+1200 mm GVM-PRO-BD45R tube approximations around a parameterized blade. It uses always-sharp WebGPU path tracing,
+offers per-light, clipping, and framing diagnostics, and saves reproducible setups
+and previews. Suggest a single lighting arrangement across the whole blade, then
+lock the rig and inspect overlapping scan positions without changing the exposure.
+It requires a supported desktop browser/GPU; the original offline
+[geometry calculator](docs/lighting/nihonto-lighting.html) remains available.
+
+```powershell
+cd studio
+npm ci
+npm run dev
+```
+
+See the [PRD](docs/lighting/NIHONTO_STUDIO_PRD.md) and
+[technical design](docs/lighting/NIHONTO_STUDIO_TECHNICAL_DESIGN.md) for scope and
+limitations. Simulated materials and illumination are representative, not calibrated
+predictions of a particular blade or camera.
+
 | File | What it does |
 |---|---|
 | [`.claude/skills/create-run`](.claude/skills/create-run/SKILL.md) | Claude Code skill: say **"Create a run"** and it asks for the API key (once), checks calibration on the first run, asks start/stop/interval with last run's answers as defaults, and starts the scan |

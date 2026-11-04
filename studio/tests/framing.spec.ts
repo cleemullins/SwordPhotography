@@ -1,0 +1,47 @@
+import { expect, test } from '@playwright/test'
+import { fieldOfView } from '../src/model'
+import { saved, noGPU, details, samples } from './helpers'
+
+test('coverage updates focused optics without moving lights and follows the unit preference', async ({ page }) => {
+  await noGPU(page); await page.goto('/')
+  const before = await saved(page)
+  await page.getByLabel('Coverage per frame', { exact: true }).fill('355')
+  await expect.poll(async () => fieldOfView((await saved(page)).camera).width).toBeCloseTo(355, 6)
+  const framed = await saved(page)
+  expect(framed.camera.focus).not.toBe(before.camera.focus)
+  expect(framed.camera.focalLength).toBe(before.camera.focalLength)
+  expect(framed.camera.aperture).toBe(before.camera.aperture)
+  expect(framed.blade).toEqual(before.blade); expect(framed.lights).toEqual(before.lights)
+  await expect(page.locator('.scan-summary')).toContainText('355.0 mm')
+  await page.getByRole('button', { name: 'in', exact: true }).click()
+  await expect(page.getByLabel('Coverage per frame', { exact: true })).toHaveValue('13.98')
+  await page.getByRole('button', { name: 'mm', exact: true }).click()
+  await details(page, 'Advanced camera')
+  await page.getByRole('button', { name: 'Reconfigure for whole-blade shot' }).click()
+  await expect.poll(async () => (await saved(page)).camera.focalLength).toBe(35)
+  await expect.poll(async () => fieldOfView((await saved(page)).camera).width).toBeCloseTo(805, 5)
+  await page.reload()
+  await expect(page.getByLabel('Coverage per frame', { exact: true })).toHaveValue('805')
+  await page.getByLabel('Coverage per frame', { exact: true }).fill('3200')
+  await expect(page.getByRole('status').filter({ hasText: 'Coverage limited' })).toBeVisible()
+})
+
+test('GPU framing with hada remains sharp and locked scan cannot change optics', async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', e => errors.push(e.message))
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Edit model...' }).click()
+  await page.getByLabel('Hada type', { exact: true }).selectOption('itame')
+  await page.getByRole('button', { name: 'Close dialog' }).click()
+  await page.getByLabel('Coverage per frame', { exact: true }).fill('400')
+  await samples(page)
+  await page.getByRole('button', { name: 'Lock rig / Preview scan' }).click()
+  await expect.poll(async () => (await saved(page)).scan.locked).toBe(true)
+  const camera = (await saved(page)).camera
+  for (const value of ['0', '350', '700', '350']) await page.getByLabel('Viewed position from base', { exact: true }).fill(value)
+  await expect.poll(async () => (await saved(page)).blade.x).toBe(0)
+  expect((await saved(page)).camera).toEqual(camera)
+  await expect(page.getByLabel('Camera height', { exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Focus at blade ridge' })).toHaveCount(0)
+  await expect(page.getByLabel('Focus distance', { exact: true })).toHaveCount(0)
+  expect(errors).toEqual([])
+})
