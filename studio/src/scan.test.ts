@@ -6,12 +6,31 @@ import { prepareSetup, scanPlan, updateRig } from './scan'
 import { tapeMarks } from './tape'
 
 describe('fixed rig and scan planning', () => {
-  it('disables legacy continuous automation and derives setup focus without changing exposure', () => {
+  it('centers legacy tube offsets at the fixed origin without recentering the table or following scans', () => {
+    const old = defaultState()
+    old.lights[0].x = 220; old.lights[1].x = -130; old.blade.x = 140; old.blade.y = -20
+    const centered = prepareSetup(parseSetup(old))
+    expect(centered.lights.map(light => light.x)).toEqual([0, 0])
+    expect(centered.blade).toEqual(old.blade)
+    expect(old.lights.map(light => light.x)).toEqual([220, -130])
+    centered.scan.locked = true
+    for (const x of [-350, 0, 350]) {
+      const attempted = structuredClone(centered)
+      attempted.blade.x = x; attempted.lights[0].x = x; attempted.lights[1].x = x
+      const next = updateRig(centered, attempted)
+      expect(next.lights).toEqual(centered.lights)
+      expect(next.blade.x).toBe(x)
+      expect(next.blade.y).toBe(-20)
+    }
+    centered.scan.locked = false
+    expect(updateRig(centered, old).lights.map(light => light.x)).toEqual([0, 0])
+  })
+  it('disables light following, retains Auto shutter choice and derives setup focus without changing exposure', () => {
     const old = defaultState()
     old.camera.focus = 1900; old.camera.autoExposure = true; old.automaticLightPosition = true
     const next = prepareSetup(old)
     expect(next.camera.focus).toBeCloseTo(next.camera.height - bladeSection(next.blade.definition, 0.5).thickness * 500)
-    expect(next.camera.autoExposure).toBe(false); expect(next.automaticLightPosition).toBe(false)
+    expect(next.camera.autoExposure).toBe(true); expect(next.automaticLightPosition).toBe(false)
     expect(next.camera.aperture).toBe(old.camera.aperture)
     expect(next.camera.shutter).toBe(old.camera.shutter)
     expect(next.lights).toEqual(old.lights)
@@ -34,7 +53,7 @@ describe('fixed rig and scan planning', () => {
     attempted.lights[0].y = 400; attempted.referenceTape = false
     attempted.blade.y = 100; attempted.blade.definition.length = 800; attempted.blade.x = 250
     const next = updateRig(s, attempted)
-    expect(next).toEqual({ ...s, blade: { ...s.blade, x: 250 } })
+    expect(next).toEqual({ ...s, referenceTape: false, blade: { ...s.blade, x: 250 } })
     expect(prepareSetup(next).camera).toEqual(s.camera)
     expect(parseSetup(next)).toEqual(next)
     attempted.scan.locked = false

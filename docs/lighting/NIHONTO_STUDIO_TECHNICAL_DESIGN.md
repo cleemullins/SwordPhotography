@@ -23,8 +23,9 @@ once, locks it, and translates only the blade/table through a simulated scan.
 | Scene representation | Three.js | Cameras, meshes, transforms, materials, and asset loading. |
 | Rendering | WebGPU with `three-gpu-pathtracer` | Existing GPU path tracing and progressive refinement rather than a new engine from scratch. |
 | Main viewport | One WebGPU-backed HTML canvas | Keep rendering, pixel-based diagnostics, and compositing on the GPU. |
-| Interaction overlays | SVG and HTML layered over the canvas | Crisp measurements, labels, framing guides, and handles. |
+| Interaction overlays | SVG and HTML layered over the canvas | Crisp measurements, labels, coverage guides, and handles. |
 | Setup diagrams | SVG | Top and end-on positioning aids without another photorealistic viewport. |
+| Spatial overview | Three.js WebGLRenderer and OrbitControls | Shaded, orbitable table/blade/camera/tube model driven by the same setup, separate from photographic light transport. |
 | Saved setups | Versioned JSON, localStorage autosave, IndexedDB captures | Local persistence without a backend, with portable setup files and PNG previews. |
 | Verification | Vitest and Playwright, plus numerical/render comparisons | Exercise optics, geometry, controls, persistence, and browser behavior. |
 
@@ -52,13 +53,36 @@ on either side, or both may be on the same side; names/colors are identities,
 not positional constraints. Height is deliberately absent from this projection.
 
 The end-on setup SVG uses a fixed bottom-center world origin at (230, 330) in a
-460 by 380 viewBox. Fit scale derives from current camera height, tube bounds, and
+460 by 432 viewBox. Fit scale derives from current camera height, tube bounds, and
 blade extent, including tube portions below the blade plane. View-only zoom is
 local UI state, not a physical or serialized camera setting. Pointer capture uses
 a fixed projection until the selected handle approaches the diagram boundary.
 Then reduce scale and rebase the drag's pointer/physical start together, so a
 stationary pointer never introduces physical motion. Clip manual zoom at the SVG
 boundary; Fit rig and selecting a cropped handle restore access.
+Dimension and extension lines with arrowheads show all three heights and both
+signed tube offsets in the current mm/in units. Reserve outer lanes for vertical
+dimensions and two rows below the blade plane for offsets. There are no separate
+position inputs or object-selector buttons. Focusable handles retain keyboard
+adjustment and bring overlapping objects forward; a screen-reader readout reports
+the focused object's position. Focal length and coverage remain visible below.
+
+`RigOverviewScene` builds the shaded overview from the same `StudioState`, using
+meters and the same `makeBlade` geometry. Blade and illustrative table/legs share
+one translated group. Camera and finite tube meshes use the fixed-rig coordinates;
+the coverage wireframe uses `fieldOfView`. Rebuild blade geometry only when its
+definition changes, and dispose the replaced buffers. Table support follows the
+blade's minimum Z. Table/camera-body dimensions and overview surface shading are
+illustrative, not calibrated equipment or photometry.
+`RigOverview` owns a separate viewing camera, OrbitControls and WebGL canvas.
+Orbit/pan/zoom never write to `StudioState`. Initial/reset framing fits the current
+rig's individual mesh bounds with a perspective-aware 88% limit on the constraining
+viewport dimension. Do not frame the empty corners of one overall box or reserve
+the entire scan travel. Adapt that fit to viewport resizing until the user adjusts the view;
+ordinary rig/table movement does not refit or chase the table. Render on state,
+view, theme or size changes, suspending redraws offscreen.
+Release controls, observers, GPU resources and queued frames on cleanup, without
+forcibly losing the canvas context that React Strict Mode or hot reload may reuse.
 
 WebGPU provides GPU computation, not a complete ray tracer. The path tracer
 performs light transport and intersection work using GPU shaders and acceleration
@@ -155,8 +179,10 @@ not as relightable textures or calibrated material measurements. Do not paint
 existing photographic highlights onto the simulated blade. Hamon fidelity remains
 a separate modeling and validation problem.
 
-Hada selection is stored separately as `blade.hada`, with None as the legacy/default
-value. A deterministic millimeter-coordinate sampler supplies Itame warped grain,
+Hada selection is stored separately as `blade.hada`, with Itame for new rigs and
+None retained for legacy/missing values or explicit off settings. Both pickers
+show generated ray-traced PNG swatches; see `scripts/render-hada-swatches.mjs`.
+A deterministic millimeter-coordinate sampler supplies Itame warped grain,
 Mokume nested cellular rings, Masame longitudinal layers, and irregular Ayasugi waves.
 Domain warping, nested layers, intermittent chikei-like strands and sparse
 ji-nie-like microfacets supply roughness, neutral metallic reflectance and submicron
@@ -166,8 +192,11 @@ Generate 8187 x 512 samples; pack overlapping halves with gutters into 4096 x 10
 textures because the tracer's atlas caps dimensions at 4096. Split only UVs at the
 blade midpoint, preserving computed geometry normals. Encode normal slopes at 32x
 strength and undo with normalScale=1/32 to survive the atlas's RGBA8 quantization.
+Derive encoded Z from quantized X/Y to keep the stored normals near unit length.
 Suppress unresolved microfacet relief. Update both material atlases and dispose all
-replaced maps. Keep the uncalibrated treatment independent of historical attribution.
+replaced maps. Grain-map replacement rebuilds scene bindings because adding maps
+changes the shader texture-info array capacity; scalar roughness edits still use
+the material-only update. Keep the uncalibrated treatment independent of historical attribution.
 The Designer links documented Juyo/Tokubetsu Juyo examples without redistributing
 their photographs.
 
@@ -210,22 +239,22 @@ Keep fixed exposure as the default. Aperture exposure compensation, if enabled,
 must be explicit. Evaluate aperture-dependent throughput separately from blur;
 a renderer's depth-of-field support alone does not establish exposure correctness.
 
-At fixed ISO 100, multiply throughput by shutter seconds times 125, preserving old
-renders at the default 1/125 second. One-shot metering renders combined
-linear source radiance to a 256 x 170 FloatType target with a blade-depth alpha mask.
-Read back asynchronously after at least eight samples; a revision token rejects
-stale results. Meter before exposure/tone mapping
-and independently of source-isolation or diagnostics. Use the 70th-percentile
-luminance target 0.45 and 99th-percentile channel limit 0.95; sub-percentile glints
-may clip. Limit each shutter adjustment to one stop, with a 0.08-stop deadband that
-does not override highlight protection. Bound shutter to 1/8000-30 seconds.
+At fixed ISO 100, multiply throughput by shutter seconds times 125, preserving
+the default 1/125-second reference. The former one-shot percentile meter and
+its separate render target have been removed. Manual and Auto shutter are the
+two exposure choices in the camera-adjacent strip; EV and compensation remain
+explicit. This is relative simulation exposure, not absolute photometry.
+ISO noise and motion blur are absent.
 
-The solver iterates against the same unexposed readback until settled.
-The UI resets EV bias and disables aperture compensation when applying metering; aperture
-and lights stay fixed. EV remains a post-meter user bias. Fewer than 32 blade pixels,
-darkness, and shutter limits have explicit status messages; dark/off-frame metering
-does not change shutter. No continuous metering runs during scan movement. This is relative
-simulation exposure, not absolute photometry; ISO noise and motion blur are absent.
+Auto shutter reads the full tracing resolution through a blade-depth-mask
+composition into a dedicated FloatType target. It protects
+the maximum RGB channel at 0.9, not a percentile. Solve shutter with the current
+aperture gain, EV and source gains, within 1/8000-30 seconds. Gate on 32 stable
+samples, run at most once per second, discard stale readbacks and ignore changes
+within 0.02 stops. Manual shutter changes disable the mode. Lock pauses it and
+cancels pending application; unlocking resumes the saved choice. Locking also
+waits for a reading matching the current exposure-input signature, or the user
+can explicitly switch to manual. Dark/empty views and limits have visible status.
 
 ## Analysis overlays
 
@@ -233,62 +262,111 @@ simulation exposure, not absolute photometry; ISO noise and motion blur are abse
 |---|---|
 | Inspect lighting | Select ordinary camera view, left-only, right-only or false-colored light contributions from the two linear buffers. This is not a traced-ray diagram. |
 | Highlight clipping | Flag exposed linear channels >= 1 before Reinhard tone mapping; real sensor saturation remains uncalibrated. |
-| Framing | Rule-of-thirds SVG overlay. Physical coverage and position are shown by the scan controls and setup diagrams. |
+| Metric tape | SVG ruler above the blade, independent of lighting; the same layout is drawn into PNG exports. |
 
-Clipping and framing are independent toggles; source modes are mutually exclusive.
+Clipping and metric tape are independent toggles; source modes are mutually exclusive.
 Clean view selects the ordinary camera image and clears overlays without modifying
-the simulation. Captures save the selected view and analysis state; the framing
-grid is drawn into a capture only when enabled.
+the simulation. Captures save the selected view and analysis state. The framing
+grid is removed; legacy grid state is cleared on restore.
+
+The image fills the scan column. A compact sticky panel above it holds shutter,
+aperture, source brightness and inspection controls. Flexible control headings
+align labels, sliders and toggles without requiring the shutter readout to be an
+editable number field. Four control columns collapse to two below 500 px.
 
 ### Fixed-rig scan state and reference tape
 
 Version-1 JSON adds `setupName`, `referenceTape`, and `scan` (start/end/step in mm,
 lock state). Validate ranges against blade length; supply defaults for older files.
-On load, disable legacy continuous-lighting/exposure flags. `updateRig` enforces
+On load, disable legacy continuous light-following. Preserve the Auto shutter
+choice, but do not execute it while locked. `updateRig` enforces
 locked-state invariants centrally, not merely through disabled controls: only table
-X and scan-plan parameters change. Unlocking derives setup focus again.
+X, scan-plan parameters and display-only tape visibility change. Unlocking derives setup focus again.
 Restoring a capture or importing a setup explicitly opens Edit rig.
+`withCenteredTubes` normalizes both longitudinal tube offsets to X=0 during
+preparation, updates and Auto placement, including restored legacy offsets.
+The old X fields remain readable for file compatibility, but are no longer UI
+controls. This normalization does not change table X/Y. Default table coordinates
+are zero; scanning and transverse alignment remain explicit user operations.
 
 Scan coordinates are measured from the base: viewed position is half blade length
 minus table X. Calculate frame indices without allocating a frame array, include
 the final partial step, and report minimum reference-plane overlap and any gap.
 Rig-only restore retains the current blade and table coordinates.
+The draggable navigator and numeric viewed-position field share the same position
+handler; the redundant range slider is removed.
 
-Both light cylinders have a 1200 mm modeled length along X. Suggestions
-preserve their longitudinal centers and solve Y/Z against points on their finite
-span, not a point emitter at the tube center. An explicit setup action can center
-both spans on the current blade center; neither span follows scan translation.
+Both light cylinders have a 1200 mm modeled length along X and fixed centers at
+X=0. Suggestions solve Y/Z against points on that finite span, not a point emitter.
+There is no centering action and neither span follows scan translation.
 
-Automatic placement samples 17 body positions and three kissaki positions with
-the table translated independently to center each under the fixed camera. Evaluate
-both source candidates jointly using finite-strip microfacet response estimates.
-Prioritize weakest-section area-weighted coverage, then average coverage and grain
-contrast; combine signed normal/polish sensitivities so cancellation is represented.
-Weight responses by actual source brightness and enabled state, matching the
-compositor; a dark tube still occludes but contributes no illumination.
-Use conservative coverage across the average and low-roughness grain responses
-with positive/negative normal perturbations, rather than only the average lobe.
-Keep candidates for difficult regions when shortlisting. Sources may serve the same
-facet at different scan positions rather than one source being assigned permanently
-to each facet. Keep longitudinal position, brightness, on/off, camera and exposure
-unchanged. Report weak predicted coverage instead of claiming uniform illumination.
+Automatic placement runs in a worker. Sample 17 body and three kissaki positions
+with the table translated independently under the fixed camera. At each position,
+sample eight transverse bands spanning the cutting edge, ha, hamon, ji and shinogi.
+Use interpolated mesh normals and the same base-polish formula that generates the
+roughness texture. The finite-strip model uses a projected GGX marginal rather
+than a heavier-tailed Cauchy approximation, with conservative grain-roughness and
+normal-variation bounds. This remains an approximation, not the GPU tracer.
 
-The metric tape is a diffuse 20 mm-wide plane at Z=0, 3 mm beyond maximum spine Y.
-It shares the blade's table translation in both traced scenes and uses a 4096 by
-128 sRGB yellow/black texture with 1 mm ticks, 5 mm intermediate ticks and numbered
-centimeters from the base. Rebuild/dispose geometry and texture when the blade
-changes. Tape visibility is serialized; the blade-depth metering mask excludes it.
-Actual image captures include the tape, unlike SVG guides. Surface relief causes
-small parallax; neither tape nor scan overlap is calibrated at the raised ridge.
-Include tape in frame restores visibility and transverse framing while preserving
-scan position and tube positions. It is an explicit setup action, not scan-time
-automation. Tape brightness remains governed by physical illumination and exposure.
+Candidate centers are capped at camera height minus tube radius, also respecting
+rig bounds, tube separation and clear camera/pupil paths. Retain candidates serving
+difficult regions. Rank pairs by weakest transverse-region and scan-section
+coverage, minimum ha/ji coverage at every scan position, dynamic range and signed
+contrast response. Reassess the top 64 camera-clear pairs with per-sample
+inter-tube visibility and relative powers down to 10%, keeping at least one
+enabled source at full reference power before exposure headroom scaling.
+Auto never uses the manual 100-200% boost range. At extreme EV/aperture settings,
+reduce both powers if their conservative radiance bound could clip even at the
+shortest shutter. `TUBE_RADIANCE` is shared with emitter construction.
+An occluded source/target path contributes zero at that sample; it does not reject
+the entire pair. Rejecting every such pair incorrectly excludes complementary
+body/kissaki lighting when a source is shadowed only in a region it does not serve.
+
+Preserve fixed-origin centers and on/off states, but brightness may change and
+enabled zero-brightness sources may be raised. Application of a successful
+suggestion enables Auto shutter to meter the real result. No light follows later
+table movement, and locking freezes exposure as well. Source positions/powers
+cannot be applied after concurrent setup edits. Report weak predicted coverage or
+no feasible below-camera solution explicitly instead of raising tubes above the
+ceiling or claiming uniform illumination.
+
+The metric tape is an SVG overlay, not scene geometry. `metricTapeLayout` projects
+the old blade-facing datum at Z=0, 3 mm beyond maximum spine Y, and positions the
+bar above it. Both generated blade profiles reach maximum spine Y at the base;
+the shared `bladeSection` function supplies that coordinate. Keep the bar and its
+caption inside the image when the datum is outside the frame.
+Ticks follow table X and physical camera coverage; transverse table movement
+updates vertical placement. Use zero at the blade base, centimeter labels and
+zoom-adaptive tick density. `drawMetricTape` uses the same layout and scales logical
+pixels to the captured render dimensions. Its brightness is independent of
+exposure, and it never participates in metering or resets ray accumulation.
+Visibility is serialized and editable while locked. The physical tape mesh and
+Include tape in frame action are removed. Neither the overlay nor scan overlap
+is a calibrated measurement at raised blade features.
 
 Per-light buffers implement immediate brightness/on-off adjustments without
 resampling when geometry, materials and light emission patterns are unchanged.
 Shutter, EV and aperture-throughput changes also recompose those same buffers.
 Moving lights or the blade invalidates accumulation. The current environment is
 black; a non-tube environment contribution would require separate accounting.
+
+## Photographic references
+
+The exact-blade collection is separate from the Met study gallery.
+`public/blade-references/manifest.json` maps the ten historical preset names to
+source files, published lengths, reviewed approximate base/tip endpoints, crop
+bounds, orientation, checksums and user-confirmed reuse permission. Original
+images remain unchanged and accessible through More. The automatic enlarged
+comparison panel and transform code are removed because source detail, especially
+for Ayanokoji and Tametsugu, cannot support meaningful camera-sized detail crops.
+Calibration metadata is retained for provenance, not used for live registration.
+Perspective, relief and endpoint uncertainty remain uncalibrated. Reference imagery
+is never placed into the blade material or simulation PNG.
+
+The Met collection retains ten object records with three additional Gassan
+images verified against the museum API's public-domain flag. Its in-app viewer
+supports original-resolution inspection, zoom/pan, alternative views and museum/
+CC0 links. It does not claim that a museum specimen is one of the dealer presets.
 
 ## Interaction, refinement, and image integrity
 
@@ -340,7 +418,8 @@ substitute rasterized results.
 | Emitters and Auto | Finite tube intersections, outward-facing area panels, source power, current-position independence and explicit unavailable solutions. |
 | Fixed scan and controls | Lock enforcement, start/end/step behavior, quick-control synchronization, persistence and capture restoration. |
 | Top view and setup | Actual X/Y offsets, equal scale, same-side/opposite-side arrangements, stable tubes/camera across scanning, dragging and responsive layout. |
-| Real GPU output | Independent source contributions, grain at base/middle/kissaki under one rig, fine-detail capture resolution, shutter/aperture/brightness recomposition and physical tape capture. |
+| Shaded overview | Shared blade geometry, table/blade grouping, fixed camera/tubes during scans, footprint updates, source state, independent orbiting and resource disposal. |
+| Real GPU output | Independent source contributions, grain at base/middle/kissaki under one rig, fine-detail capture resolution, shutter/aperture/brightness recomposition and an exposure-independent metric overlay in PNG captures. |
 
 These are software regressions, not measured photometric accuracy or universal
 performance guarantees. Remaining work includes comparison against known real

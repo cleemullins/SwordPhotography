@@ -1,12 +1,11 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { blurDiameter, defaultState, HADA_TYPES } from '../src/model'
-import type { StudioState } from '../src/model'
-import { details, samples } from './helpers'
+import { details, samples, saved } from './helpers'
 
-async function saved(page: Page): Promise<StudioState> {
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('nihonto-studio-setup-v1'))).not.toBeNull()
-  return page.evaluate(() => JSON.parse(localStorage.getItem('nihonto-studio-setup-v1')!))
+async function chooseHada(page: Page, type: string) {
+  await page.getByRole('combobox', { name: 'Hada type', exact: true }).click()
+  await page.getByRole('option', { name: type[0].toUpperCase() + type.slice(1), exact: true }).click()
 }
 
 test('designer hada selection, previews and persistence stay independent of geometry', async ({ page }) => {
@@ -16,7 +15,7 @@ test('designer hada selection, previews and persistence stay independent of geom
   await expect(page.getByText('NIHONTO DESIGNER', { exact: true })).toBeVisible()
   const previews = new Set<string>()
   for (const [type, label] of Object.entries(HADA_TYPES)) {
-    await page.getByLabel('Hada type', { exact: true }).selectOption(type)
+    await chooseHada(page, type)
     await expect.poll(async () => (await saved(page)).blade.hada).toBe(type)
     await expect(page.getByRole('img', { name: `${label} hada grain preview` })).toBeVisible()
     previews.add(await page.locator('.hada-preview').innerHTML())
@@ -31,12 +30,12 @@ test('designer hada selection, previews and persistence stay independent of geom
   const path = await (await downloadPromise).path()
   await details(page, 'More')
   await page.getByRole('button', { name: 'Reset setup', exact: true }).click()
-  await expect.poll(async () => (await saved(page)).blade.hada).toBe('none')
+  await expect.poll(async () => (await saved(page)).blade.hada).toBe('itame')
   await page.locator('input[type=file]').setInputFiles(path)
   await expect.poll(async () => (await saved(page)).blade.hada).toBe('ayasugi')
   await page.reload()
   await page.getByRole('button', { name: 'Edit model...' }).click()
-  await expect(page.getByLabel('Hada type', { exact: true })).toHaveValue('ayasugi')
+  await expect(page.getByRole('combobox', { name: 'Hada type', exact: true })).toContainText('Ayasugi')
   const invalid = await saved(page)
   await page.getByRole('button', { name: 'Close dialog' }).click()
   await page.locator('input[type=file]').setInputFiles({
@@ -87,6 +86,8 @@ test('every hada changes real GPU reflections without hamon and captures restore
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()) })
   const state = defaultState()
   state.automaticLightPosition = true
+  state.blade.hada = 'none'
+  state.referenceTape = false
   state.blade.detail = false; state.blade.roughness = 0.22
   state.camera.focalLength = 100; state.camera.aperture = 11
   await page.addInitScript(s => localStorage.setItem('nihonto-studio-setup-v1', JSON.stringify(s)), state)
@@ -100,16 +101,19 @@ test('every hada changes real GPU reflections without hamon and captures restore
     await page.getByRole('button', { name: 'Pause rendering', exact: true }).click()
   }
   await refine()
+  await page.getByLabel('Auto shutter', { exact: true }).uncheck()
   const plain = await image(page)
   for (const type of ['itame', 'mokume', 'masame', 'ayasugi']) {
     await page.getByRole('button', { name: 'Edit model...' }).click()
-    await page.getByLabel('Hada type', { exact: true }).selectOption(type)
+    await chooseHada(page, type)
     await expect.poll(async () => (await saved(page)).blade.hada).toBe(type)
     await page.getByRole('button', { name: 'Close dialog' }).click()
     await page.getByRole('button', { name: 'Resume rendering', exact: true }).click()
     await refine()
     const textured = await image(page)
-    const difference = textured.reduce((sum, v, i) => sum + Math.abs(v - plain[i]), 0) / plain.length
+    const litDifferences = textured.flatMap((v, i) => Math.max(v, plain[i]) > 25 ? [Math.abs(v - plain[i])] : [])
+    expect(litDifferences.length).toBeGreaterThan(300)
+    const difference = litDifferences.reduce((sum, value) => sum + value, 0) / litDifferences.length
     expect(difference).toBeGreaterThan(1)
     expect((await saved(page)).blade.detail).toBe(false)
     await page.locator('.viewport').screenshot({ path: `test-results/hada-${type}.png` })
@@ -117,12 +121,12 @@ test('every hada changes real GPU reflections without hamon and captures restore
   await page.getByRole('button', { name: 'Save preview', exact: true }).click()
   await expect(page.locator('.preview-thumb')).toHaveCount(1)
   await page.getByRole('button', { name: 'Edit model...' }).click()
-  await page.getByLabel('Hada type', { exact: true }).selectOption('none')
+  await chooseHada(page, 'none')
   await page.getByRole('button', { name: 'Close dialog' }).click()
   await page.getByRole('button', { name: /Comparisons/ }).click()
   await page.getByRole('button', { name: 'Restore full setup', exact: true }).click()
   await page.getByRole('button', { name: 'Edit model...' }).click()
-  await expect(page.getByLabel('Hada type', { exact: true })).toHaveValue('ayasugi')
+  await expect(page.getByRole('combobox', { name: 'Hada type', exact: true })).toContainText('Ayasugi')
   await expect.poll(async () => (await saved(page)).blade.hada).toBe('ayasugi')
   expect(errors).toEqual([])
   await expect(page.getByRole('alert')).toHaveCount(0)

@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
+import type { KeyboardEvent, PointerEvent } from 'react'
 import { bladeCrossSections, bladeSection } from './blade'
-import { clamp, fieldOfView, LIMITS, TUBE_FIXTURE, TUBE_LENGTH } from './model'
+import { clamp, fieldOfView, TUBE_FIXTURE, TUBE_LENGTH } from './model'
 import type { StudioState } from './model'
 import { SHUTTER_SPEEDS, shutterLabel, shutterStep } from './exposure'
 import { moveSetupPosition, setupDragProjection, setupPointFits, setupPosition, setupProjection } from './setup'
@@ -9,10 +9,10 @@ import type { SetupPosition, SetupProjection, SetupTarget } from './setup'
 
 interface NumberControlProps {
   label: string; value: number; min: number; max: number; step?: number; unit?: string;
-  onChange: (value: number) => void; displayScale?: number; precision?: number
+  onChange: (value: number) => void; displayScale?: number; precision?: number; shortLabel?: string; disabled?: boolean
 }
 
-export function NumberControl({ label, value, min, max, step = 1, unit = 'mm', onChange, displayScale = 1, precision, showSlider = false }: NumberControlProps & { showSlider?: boolean }) {
+export function NumberControl({ label, value, min, max, step = 1, unit = 'mm', onChange, displayScale = 1, precision, shortLabel, disabled, showSlider = false }: NumberControlProps & { showSlider?: boolean }) {
   const id = useId()
   const formatted = (n: number) => Number((n * displayScale).toFixed(precision ?? (displayScale === 1 ? 3 : 2))).toString()
   const [draft, setDraft] = useState<{ value: number; scale: number; text: string; error: string } | null>(null)
@@ -20,8 +20,8 @@ export function NumberControl({ label, value, min, max, step = 1, unit = 'mm', o
   const error = currentDraft?.error ?? ''
   return <div className={showSlider ? 'slider-control' : 'numeric-control'}>
     <div className="control-heading">
-      <label htmlFor={id}>{label}</label>
-      <span className="number-field"><input id={id} type="number" value={currentDraft?.text ?? formatted(value)}
+      <label htmlFor={id}>{shortLabel ?? label}</label>
+      <span className="number-field"><input id={id} type="number" aria-label={shortLabel ? label : undefined} disabled={disabled} value={currentDraft?.text ?? formatted(value)}
         aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined}
         min={min * displayScale} max={max * displayScale} step={displayScale === 1 ? step : 'any'}
         onChange={event => {
@@ -34,7 +34,7 @@ export function NumberControl({ label, value, min, max, step = 1, unit = 'mm', o
           }
         }} /><span>{unit}</span></span>
     </div>
-    {showSlider && <input type="range" aria-label={`${label} slider`} min={min} max={max} step={step} value={value}
+    {showSlider && <input type="range" aria-label={`${label} slider`} disabled={disabled} min={min} max={max} step={step} value={value}
       onChange={event => onChange(event.target.valueAsNumber)} />}
     {error && <small className="field-error" id={`${id}-error`}>{error}</small>}
   </div>
@@ -45,8 +45,8 @@ export function Slider(props: NumberControlProps) { return <NumberControl {...pr
 export function ShutterSlider({ value, onChange }: { value: number; onChange: (seconds: number) => void }) {
   const id = useId()
   return <div className="slider-control">
-    <div className="control-heading"><label htmlFor={id}>Shutter speed</label><output htmlFor={id}>{shutterLabel(value)}</output></div>
-    <input id={id} type="range" min={0} max={SHUTTER_SPEEDS.length - 1} step={1} value={shutterStep(value)}
+    <div className="control-heading"><label htmlFor={id}>Shutter</label><output htmlFor={id}>{shutterLabel(value)}</output></div>
+    <input id={id} type="range" aria-label="Shutter speed" min={0} max={SHUTTER_SPEEDS.length - 1} step={1} value={shutterStep(value)}
       aria-valuetext={shutterLabel(value)} aria-description="Photographic shutter steps, from 1/8000 second on the left to 30 seconds on the right. Longer exposure brightens the image without adding motion blur."
       onChange={event => onChange(SHUTTER_SPEEDS[event.target.valueAsNumber])} />
   </div>
@@ -115,13 +115,28 @@ export function BladeNavigator({ state, onPosition }: { state: StudioState; onPo
   </svg>
 }
 
-export function SetupDiagram({ state, inches, onCameraMove, onLightMove, children }: {
+function SetupDimension({ id, label, value, vertical = false, from, to, datum, lane, arrow, color = '' }: {
+  id: string; label: string; value: string; vertical?: boolean; from: number; to: number;
+  datum: number; lane: number; arrow: string; color?: string
+}) {
+  const direction = Math.sign(lane - datum) || 1
+  const marker = from === to ? undefined : `url(#${arrow})`
+  return <g className={`setup-dimension ${color}`} data-dimension={id} role="img" aria-label={`${label}: ${value}`}>
+    {[from, to].map((point, i) => <line key={i} className="dimension-extension"
+      x1={vertical ? datum + direction * 4 : point} y1={vertical ? point : datum + direction * 4}
+      x2={vertical ? lane + direction * 4 : point} y2={vertical ? point : lane + direction * 4} />)}
+    <line className="dimension-line" x1={vertical ? lane : from} y1={vertical ? from : lane}
+      x2={vertical ? lane : to} y2={vertical ? to : lane} markerStart={marker} markerEnd={marker} />
+    <text textAnchor="middle" transform={`translate(${vertical ? lane - 7 : (from + to) / 2},${vertical ? (from + to) / 2 : lane - 7}) rotate(${vertical ? -90 : 0})`}>{value}</text>
+  </g>
+}
+
+export function SetupDiagram({ state, inches, onCameraMove, onLightMove }: {
   state: StudioState; inches: boolean; onCameraMove: (height: number) => void;
   onLightMove: (index: 0 | 1, position: SetupPosition) => void;
-  children?: (selected: SetupTarget) => ReactNode
 }) {
   const svg = useRef<SVGSVGElement>(null)
-  const instructions = useId(), readout = useId()
+  const instructions = useId(), readout = useId(), arrow = useId()
   const [selected, setSelected] = useState<SetupTarget>('camera')
   const [zoom, setZoom] = useState(1)
   const [drag, setDrag] = useState<{
@@ -180,6 +195,7 @@ export function SetupDiagram({ state, inches, onCameraMove, onLightMove, childre
     'aria-label': target === 'camera' ? 'Camera position' : `${target === 0 ? 'Left' : 'Right'} light position`,
     'aria-describedby': `${instructions} ${readout}`,
     'aria-pressed': selected === target,
+    'aria-disabled': state.scan.locked,
     onPointerDown: (event: PointerEvent<SVGGElement>) => start(event, target),
     onKeyDown: (event: KeyboardEvent<SVGGElement>) => keyboard(event, target),
     onFocus: () => select(target),
@@ -196,7 +212,7 @@ export function SetupDiagram({ state, inches, onCameraMove, onLightMove, childre
         onClick={() => setZoom(z => Math.min(4, z * 1.25))}>Zoom +</button>
       <button type="button" disabled={Boolean(drag)} onClick={() => setZoom(1)} title="Fit the camera, lights and blade into the diagram">Fit rig</button>
     </div>
-    <svg ref={svg} viewBox="0 0 460 380" className="setup-diagram" role="group" aria-label="Draggable camera and light setup"
+    <svg ref={svg} viewBox="0 0 460 432" className="setup-diagram" role="group" aria-label="Draggable camera and light setup"
       data-scale={scale} data-origin-x={center} data-origin-y={floor}
       onPointerMove={event => {
         if (!drag || event.pointerId !== drag.pointerId) return
@@ -215,6 +231,10 @@ export function SetupDiagram({ state, inches, onCameraMove, onLightMove, childre
         move(drag.target, position)
       }} onPointerUp={finish} onPointerCancel={finish}
       onLostPointerCapture={event => { if (event.pointerId === drag?.pointerId) setDrag(null) }}>
+      <defs><marker id={arrow} viewBox="0 0 6 6" refX="6" refY="3" markerWidth="6" markerHeight="6"
+        orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+        <path d="M 0 0 L 6 3 L 0 6 Z" fill="var(--cp-text-soft)" />
+      </marker></defs>
       <g aria-hidden="true">
         <line x1="20" y1={floor} x2="440" y2={floor} className="diagram-guide" />
         <line x1={center} y1="24" x2={center} y2={floor} className="diagram-guide" />
@@ -222,8 +242,20 @@ export function SetupDiagram({ state, inches, onCameraMove, onLightMove, childre
         <text x={X(state.blade.y)} y={floor + 21} textAnchor="middle">NIHONTO</text>
         {state.lights.map((l, i) => <line key={i} x1={X(l.y)} y1={Y(l.height)} x2={X(state.blade.y)} y2={floor}
           className={`${i === 0 ? 'ray-left' : 'ray-right'} ${l.enabled ? '' : 'disabled-light'}`} />)}
-        <path d={`M ${X(current.y)} ${Y(current.height)} V ${floor} H ${X(state.blade.y)}`} className="setup-dimensions" />
       </g>
+      <SetupDimension id="camera-height" label="Camera height" value={measure(state.camera.height)}
+        vertical from={Y(state.camera.height)} to={floor} datum={center} lane={18} arrow={arrow} />
+      {state.lights.map((light, i) => {
+        const side = i === 0 ? 'Left' : 'Right', id = i === 0 ? 'left' : 'right'
+        return <g key={id}>
+          <SetupDimension id={`${id}-height`} label={`${side} light height`} value={measure(light.height)}
+            vertical from={Y(light.height)} to={floor} datum={X(light.y)} lane={i === 0 ? 58 : 438}
+            arrow={arrow} color={`${id}-dimension`} />
+          <SetupDimension id={`${id}-offset`} label={`${side} rig offset`} value={measure(light.y)}
+            from={center} to={X(light.y)} datum={floor} lane={376 + i * 24}
+            arrow={arrow} color={`${id}-dimension`} />
+        </g>
+      })}
       {(['camera', 0, 1] as const).toSorted((a, b) => Number(a === selected) - Number(b === selected)).map(i => {
         if (i === 'camera') return <g key={i} {...handleProps(i)} transform={`translate(${center},${Y(state.camera.height)})`}>
           <title>Camera: drag vertically or use up/down arrows</title>
@@ -241,27 +273,11 @@ export function SetupDiagram({ state, inches, onCameraMove, onLightMove, childre
           {Math.abs(l.x) > TUBE_LENGTH / 2 && <text y="38" textAnchor="middle" aria-hidden="true">past tube ends</text>}
         </g>
       })}
-      <text x="16" y="373" aria-hidden="true">END-ON · bottom-center zoom · auto-fit at edges</text>
+      <text x="16" y="424" aria-hidden="true">END-ON · dimensions from fixed rig origin</text>
     </svg>
-    <div className="segmented setup-selection" aria-label="Selected setup object">
-      {(['camera', 0, 1] as const).map(target => <button key={target} aria-pressed={selected === target} onClick={() => {
-        select(target)
-        document.getElementById(target === 'camera' ? 'setup-camera' : `setup-light-${target}`)?.focus()
-      }}>{target === 'camera' ? 'Camera' : target === 0 ? 'Left light' : 'Right light'}</button>)}
-    </div>
     <p className="setup-readout" id={readout} aria-live={drag ? 'off' : 'polite'}>
       {name}: {measure(current.height)} high{selected === 'camera' ? ' · vertical movement only' : ` · rig offset ${measure(current.y)} · ${measure(current.y - state.blade.y)} from blade`}
     </p>
-    <fieldset disabled={state.scan.locked} className="rig-fields">
-    <NumberControl label={selected === 'camera' ? 'Camera height' : `${selected === 0 ? 'Left' : 'Right'} height`}
-      value={current.height} min={selected === 'camera' ? LIMITS.height[0] : LIMITS.lightHeight[0]}
-      max={selected === 'camera' ? LIMITS.height[1] : LIMITS.lightHeight[1]} unit={unit} displayScale={displayScale}
-      onChange={height => move(selected, { ...current, height })} />
-    {selected !== 'camera' && <NumberControl label={`${selected === 0 ? 'Left' : 'Right'} rig offset`}
-      value={current.y} min={LIMITS.y[0]} max={LIMITS.y[1]}
-      unit={unit} displayScale={displayScale} onChange={offset => move(selected, { ...current, y: offset })} />}
-    {children?.(selected)}
-    </fieldset>
     <p className="setup-axis-note">Rig origin: directly under the stationary camera. Negative offset is left, positive is right. Height is above the blade plane.</p>
   </div>
 }

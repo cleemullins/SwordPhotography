@@ -5,6 +5,7 @@ import { bladeCrossSections, bladeSection } from './blade'
 import { HISTORICAL_PRESETS, PRESET_MEASURE_LABELS } from './historical-presets'
 import { NumberControl, Slider } from './components'
 import { HADA_DESCRIPTIONS, hadaGrain } from './hada'
+import { HadaPicker } from './HadaPicker'
 
 function HadaPreview({ hada }: { hada: HadaType }) {
   const paths = useMemo(() => {
@@ -84,9 +85,7 @@ export function ModelEditor({ definition, name, inches, hada, onHada, onChange, 
       </details>
     </div>}
     <div className="section-heading"><span className="eyebrow">HADA / GRAIN</span></div>
-    <label className="select-field">Hada type<select aria-label="Hada type" value={hada} onChange={e => onHada(e.target.value as HadaType)}>
-      {Object.entries(HADA_TYPES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-    </select></label>
+    <HadaPicker label="Hada type" value={hada} onChange={onHada} />
     <p className="control-note">{HADA_DESCRIPTIONS[hada]}</p>
     <HadaPreview hada={hada} />
     <p className="control-note">Enlarged schematic of a 12 x 3.6 mm grain patch. Fine layers, intermittent chikei-like strands and ji-nie-like microfacets vary roughness, reflection normals and neutral steel reflectance. No highlights are painted in. Independent of hamon; inspect the camera image under different lights and polish settings.</p>

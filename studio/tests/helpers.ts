@@ -3,8 +3,14 @@ import type { Page } from '@playwright/test'
 import type { StudioState } from '../src/model'
 
 export async function saved(page: Page): Promise<StudioState> {
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('nihonto-studio-setup-v1'))).not.toBeNull()
-  return page.evaluate(() => JSON.parse(localStorage.getItem('nihonto-studio-setup-v1')!))
+  let value: StudioState | null = null
+  await expect.poll(async () => {
+    value = await page.evaluate(() => document.querySelector('.brand small')?.textContent === 'Autosaved locally'
+      ? JSON.parse(localStorage.getItem('nihonto-studio-setup-v1') ?? 'null') : null)
+    return value !== null
+  }).toBe(true)
+  if (!value) throw new Error('The current setup was not persisted.')
+  return value
 }
 export async function noGPU(page: Page) {
   await page.addInitScript(() => Object.defineProperty(navigator, 'gpu', { value: undefined }))

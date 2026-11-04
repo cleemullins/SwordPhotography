@@ -1,6 +1,6 @@
 import { BufferGeometry, Float32BufferAttribute, DataTexture, RGBAFormat, RepeatWrapping, Vector3, LinearFilter } from 'three'
 import type { BladeDefinition, HadaType } from './model'
-import { hadaSurface } from './hada'
+import { bladePolish, hadaSurface } from './hada'
 
 export const HADA_NORMAL_SCALE = 1 / 32
 const TILE_WIDTH = 4096, TILE_HEIGHT = 514
@@ -189,10 +189,7 @@ function makeSurfaceTextures(hada: HadaType, detail: boolean, length: number, bl
   const heights = withNormals ? new Float32Array(width * height) : null
   for (let j = 0; j < height; j++) for (let i = 0; i < width; i++) {
     const u = i / xDivisor, v = j / yDivisor
-    const boundary = 0.16 + 0.035 * Math.sin(u * 116) + 0.015 * Math.sin(u * 281)
-    const hamon = Math.exp(-(((v - boundary) / 0.028) ** 2))
-    const grain = 0.025 * Math.sin(u * 1400 + Math.sin(v * 140) * 2)
-    let roughness = detail ? Math.min(1, 0.62 + 0.32 * hamon + grain + (v < boundary ? 0.08 : 0)) : 1
+    let roughness = bladePolish(u, v, detail)
     if (hada !== 'none') {
       const surface = hadaSurface(hada, u * length, (v - 0.5) * widths[i], Math.max(length / width, widths[i] / height))
       roughness *= surface.roughness
@@ -225,7 +222,8 @@ function normalTexture(heights: Float32Array, width: number, height: number, wid
     const dy = (heights[top * width + i] - heights[bottom * width + i]) / ((top - bottom) * widths[i] / (height - 1)) / HADA_NORMAL_SCALE
     const inverseLength = 1 / Math.hypot(dx, dy, 1), k = (j * width + i) * 4
     data[k] = Math.round((-dx * inverseLength * 0.5 + 0.5) * 255); data[k + 1] = Math.round((-dy * inverseLength * 0.5 + 0.5) * 255)
-    data[k + 2] = Math.round((inverseLength * 0.5 + 0.5) * 255); data[k + 3] = 255
+    const nx = data[k] / 255 * 2 - 1, ny = data[k + 1] / 255 * 2 - 1
+    data[k + 2] = Math.round((Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny)) * 0.5 + 0.5) * 255); data[k + 3] = 255
   }
   const texture = new DataTexture(data, width, height, RGBAFormat)
   texture.minFilter = texture.magFilter = LinearFilter

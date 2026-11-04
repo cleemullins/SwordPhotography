@@ -1,15 +1,9 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { defaultState } from '../src/model'
-import type { StudioState } from '../src/model'
 import { setupProjection } from '../src/setup'
 import { focusOnBlade } from '../src/framing'
-import { details, samples } from './helpers'
-
-async function saved(page: Page): Promise<StudioState> {
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('nihonto-studio-setup-v1'))).not.toBeNull()
-  return page.evaluate(() => JSON.parse(localStorage.getItem('nihonto-studio-setup-v1')!))
-}
+import { details, samples, saved, load } from './helpers'
 
 async function dragHandle(page: Page, id: string, dx: number, dy: number) {
   const handle = page.locator(`#${id} .setup-hit-target`)
@@ -48,12 +42,15 @@ test.describe('rig controls and responsive layout', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.getByRole('region', { name: 'Fixed rig', exact: true }).screenshot({ path: 'test-results/setup-mobile.png' })
     await expect(page.getByLabel('Camera height slider', { exact: true })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Left light', exact: true }).click()
+    await expect(page.getByRole('button', { name: /^(Camera|Left light|Right light)$/ })).toHaveCount(0)
+    await expect(page.locator('.setup-diagram .setup-dimension')).toHaveCount(5)
+    for (const label of ['Camera height', 'Left height', 'Right height', 'Left rig offset', 'Right rig offset']) {
+      await expect(page.getByRole('spinbutton', { name: label, exact: true })).toHaveCount(0)
+    }
     await expect(page.getByLabel('Left height slider', { exact: true })).toHaveCount(0)
     await expect(page.getByLabel('Right side offset slider', { exact: true })).toHaveCount(0)
-    await expect(page.getByLabel('Left brightness slider', { exact: true })).toBeVisible()
-    await details(page, 'Advanced tube')
-    await expect(page.getByLabel('Left along blade slider', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Left tube brightness slider', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Left along blade slider', { exact: true })).toHaveCount(0)
   })
 
   test('dragging within the diagram keeps a stable scale and mirrors linked lights', async ({ page }) => {
@@ -74,15 +71,17 @@ test.describe('rig controls and responsive layout', () => {
     expect(state.lights[1].brightness).toBe(65)
     const height = state.lights[1].height
     await page.mouse.move(20, 20)
-    expect(Number(await page.getByLabel('Right height', { exact: true }).inputValue())).toBe(height)
+    expect((await saved(page)).lights[1].height).toBe(height)
 
     await page.getByRole('button', { name: 'Right light position', exact: true }).focus()
     await page.keyboard.press('Shift+ArrowDown')
-    await expect(page.getByLabel('Right height', { exact: true })).toHaveValue(String(height - 10))
-    await page.getByLabel('Right height', { exact: true }).fill('1000')
+    await expect.poll(async () => (await saved(page)).lights[1].height).toBe(height - 10)
+    await expect(page.locator('[data-dimension="right-height"] text')).toHaveText(`${(height - 10).toFixed(1)} mm`)
+    const atLimit = await saved(page); atLimit.lights[1].height = 1000
+    await load(page, atLimit)
     await page.getByRole('button', { name: 'Right light position', exact: true }).focus()
     await page.keyboard.press('ArrowUp')
-    await expect(page.getByLabel('Right height', { exact: true })).toHaveValue('1000')
+    expect((await saved(page)).lights[1].height).toBe(1000)
   })
 
   test('camera drag is vertical only, supports precise units, and persists', async ({ page }) => {
@@ -100,15 +99,19 @@ test.describe('rig controls and responsive layout', () => {
     await page.keyboard.press('ArrowRight')
     expect(await page.locator('#setup-camera').getAttribute('transform')).toBe(beforeX)
     await page.keyboard.press('ArrowUp')
-    await expect(page.getByLabel('Camera height', { exact: true })).toHaveValue(String(Number((expected + 1).toFixed(1))))
+    const height = Number((expected + 1).toFixed(1))
+    await expect.poll(async () => (await saved(page)).camera.height).toBe(height)
+    await expect(page.locator('[data-dimension="camera-height"] text')).toHaveText(`${height.toFixed(1)} mm`)
     await page.getByRole('button', { name: 'in', exact: true }).click()
-    await page.getByLabel('Camera height', { exact: true }).fill('30')
-    await expect.poll(async () => (await saved(page)).camera.height).toBeCloseTo(762, 5)
+    await expect(page.locator('[data-dimension="camera-height"] text')).toHaveText(`${(height / 25.4).toFixed(2)} in`)
+    expect((await saved(page)).camera.height).toBe(height)
     await page.reload()
-    await expect(page.getByLabel('Camera height', { exact: true })).toHaveValue('762')
-    await page.getByLabel('Camera height', { exact: true }).fill('1801')
-    await expect(page.getByLabel('Camera height', { exact: true })).toHaveAttribute('aria-invalid', 'true')
-    expect((await saved(page)).camera.height).toBeCloseTo(762)
+    await expect(page.locator('[data-dimension="camera-height"] text')).toHaveText(`${height.toFixed(1)} mm`)
+    const atLimit = await saved(page); atLimit.camera.height = 1800
+    await load(page, atLimit)
+    await page.getByRole('button', { name: 'Camera position', exact: true }).focus()
+    await page.keyboard.press('ArrowUp')
+    expect((await saved(page)).camera.height).toBe(1800)
   })
 
   test('a touch drag changes light position without scrolling the page', async ({ page }) => {
@@ -134,23 +137,22 @@ test.describe('rig controls and responsive layout', () => {
     await dragHandle(page, 'setup-light-0', -700, 100)
     await expect.poll(async () => (await saved(page)).lights[0].y).toBe(-450)
     expect((await saved(page)).lights[0].enabled).toBe(false)
-    const height = await page.getByLabel('Left height', { exact: true }).inputValue()
+    const height = (await saved(page)).lights[0].height
     const svg = await page.locator('.setup-diagram').boundingBox()
     await page.mouse.move(svg!.x + svg!.width / 2, svg!.y + 100)
-    await expect(page.getByLabel('Left height', { exact: true })).toHaveValue(height)
-    await expect(page.getByLabel('Left rig offset', { exact: true })).toHaveValue('-450')
+    expect((await saved(page)).lights[0].height).toBe(height)
+    await expect(page.locator('[data-dimension="left-offset"] text')).toHaveText('-450.0 mm')
     await dragHandle(page, 'setup-light-0', 20, -20)
     await expect.poll(async () => (await saved(page)).lights[0].y).toBeGreaterThan(-450)
   })
 
-  test('object selection exposes overlapping handles for dragging', async ({ page }) => {
-    await page.getByRole('button', { name: 'Left light', exact: true }).click()
-    await page.getByLabel('Left height', { exact: true }).fill('480')
-    await page.getByLabel('Left rig offset', { exact: true }).fill('0')
-    await page.getByLabel('Selected setup object').getByRole('button', { name: 'Camera', exact: true }).click()
+  test('keyboard focus exposes overlapping handles without object-selection buttons', async ({ page }) => {
+    const overlapping = defaultState(); overlapping.lights[0].height = 480; overlapping.lights[0].y = 0
+    await load(page, overlapping)
+    await page.getByRole('button', { name: 'Camera position', exact: true }).focus()
     await expect(page.getByRole('button', { name: 'Camera position', exact: true })).toBeFocused()
     await page.keyboard.press('ArrowUp')
-    await expect(page.getByLabel('Camera height', { exact: true })).toHaveValue('481')
+    await expect.poll(async () => (await saved(page)).camera.height).toBe(481)
     await dragHandle(page, 'setup-camera', 0, -20)
     await expect.poll(async () => (await saved(page)).camera.height).toBeGreaterThan(480)
     expect((await saved(page)).lights[0]).toMatchObject({ height: 480, y: 0 })
@@ -177,7 +179,7 @@ test.describe('rig controls and responsive layout', () => {
     await page.getByRole('button', { name: 'Fit rig', exact: true }).click()
     expect(Number(await svg.getAttribute('data-scale'))).toBeCloseTo(scale)
     for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Zoom in setup', exact: true }).click()
-    await page.getByRole('button', { name: 'Right light', exact: true }).click()
+    await page.getByRole('button', { name: 'Right light position', exact: true }).focus()
     expect(Number(await svg.getAttribute('data-scale'))).toBeCloseTo(scale)
     expect(await saved(page)).toEqual(scene)
     await page.setViewportSize({ width: 390, height: 844 })
@@ -186,7 +188,7 @@ test.describe('rig controls and responsive layout', () => {
   })
 
   test('dragging near the edge zooms out and rebases without drifting at a stationary pointer', async ({ page }) => {
-    await page.getByRole('button', { name: 'Left light', exact: true }).click()
+    await page.getByRole('button', { name: 'Left light position', exact: true }).focus()
     for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Zoom in setup', exact: true }).click()
     const svg = page.locator('.setup-diagram')
     const scale = Number(await svg.getAttribute('data-scale'))
@@ -201,7 +203,7 @@ test.describe('rig controls and responsive layout', () => {
     const expectedHeight = Math.round((380 + 90 / scale) * 10) / 10
     await expect.poll(async () => (await saved(page)).lights[0].height).toBe(expectedHeight)
     await page.mouse.move(x, y - 90 * factor)
-    expect(Number(await page.getByLabel('Left height', { exact: true }).inputValue())).toBe(expectedHeight)
+    expect((await saved(page)).lights[0].height).toBe(expectedHeight)
     await page.mouse.move(x, y - 100 * factor)
     await expect.poll(async () => (await saved(page)).lights[0].height).toBeCloseTo(expectedHeight + 10 / expanded, 0)
     await page.mouse.up()

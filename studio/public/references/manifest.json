@@ -186,7 +186,51 @@
     "bytes": 235726,
     "sha256": "71FAE297E3BC4A3ADC26F68CE591138B72FA0750C9D8557B560883AECBDB5467",
     "retrievedAt": "2026-11-03T19:28:15.9013180Z",
-    "role": "Appearance reference only; lighting and camera calibration unknown"
+    "role": "Appearance reference only; lighting and camera calibration unknown",
+    "additionalViews": [
+      {
+        "file": "met-27614-detail-1.jpg",
+        "imageUrl": "https://images.metmuseum.org/CRDImages/aa/original/LC-L_2004_41_33a_c-037.jpg",
+        "sha256": "ec58a257a5a362300d3eae251e5db9474fbf0492a7adb72e78212e2a98ba34fa",
+        "bytes": 591681,
+        "label": "Kissaki and steel grain detail",
+        "width": 1704,
+        "height": 4000,
+        "sourcePage": "https://www.metmuseum.org/art/collection/search/27614",
+        "metadataUrl": "https://collectionapi.metmuseum.org/public/collection/v1/objects/27614",
+        "isPublicDomain": true,
+        "license": "CC0-1.0",
+        "retrievedAt": "2026-11-04T19:17:23.185Z"
+      },
+      {
+        "file": "met-27614-detail-2.jpg",
+        "imageUrl": "https://images.metmuseum.org/CRDImages/aa/original/LC-L_2004_41_33a_c-038.jpg",
+        "sha256": "1ee0d0c5d7c54ea0b81c5cb45314cb89bf9f047693dff3c77db652c4f5e39296",
+        "bytes": 868841,
+        "label": "Base and tang detail",
+        "width": 2014,
+        "height": 4000,
+        "sourcePage": "https://www.metmuseum.org/art/collection/search/27614",
+        "metadataUrl": "https://collectionapi.metmuseum.org/public/collection/v1/objects/27614",
+        "isPublicDomain": true,
+        "license": "CC0-1.0",
+        "retrievedAt": "2026-11-04T19:17:23.185Z"
+      },
+      {
+        "file": "met-27614-detail-3.jpg",
+        "imageUrl": "https://images.metmuseum.org/CRDImages/aa/original/LC-L_2004_41_33a_c-010.jpg",
+        "sha256": "620c5bbf73e41f1b3241ec8464d2df74743507c73657f73170058168df93906c",
+        "bytes": 249359,
+        "label": "Opposite face",
+        "width": 1718,
+        "height": 4000,
+        "sourcePage": "https://www.metmuseum.org/art/collection/search/27614",
+        "metadataUrl": "https://collectionapi.metmuseum.org/public/collection/v1/objects/27614",
+        "isPublicDomain": true,
+        "license": "CC0-1.0",
+        "retrievedAt": "2026-11-04T19:17:23.185Z"
+      }
+    ]
   },
   {
     "file": "met-21891.jpg",

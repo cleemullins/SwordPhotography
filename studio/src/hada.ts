@@ -8,6 +8,18 @@ export const HADA_DESCRIPTIONS: Record<HadaType, string> = {
   ayasugi: 'Nested wave-like folds with naturally varying amplitude and spacing.',
 }
 
+export function hamonBoundary(u: number) {
+  return 0.16 + 0.035 * Math.sin(u * 116) + 0.015 * Math.sin(u * 281)
+}
+
+export function bladePolish(u: number, v: number, detail: boolean) {
+  if (!detail) return 1
+  const boundary = hamonBoundary(u)
+  const hamon = Math.exp(-(((v - boundary) / 0.028) ** 2))
+  const variation = 0.025 * Math.sin(u * 1400 + Math.sin(v * 140) * 2)
+  return Math.min(1, 0.62 + 0.32 * hamon + variation + (v < boundary ? 0.08 : 0))
+}
+
 function jitter(x: number, y: number, seed: number) {
   let hash = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ seed
   hash = Math.imul(hash ^ (hash >>> 13), 1274126177)
@@ -80,8 +92,8 @@ export function hadaSurface(type: Exclude<HadaType, 'none'>, x: number, y: numbe
   const resolved = Math.max(0, Math.min(1, cell / (2 * footprint) - 0.5))
   return {
     grain,
-    roughness: 0.56 + 0.4 * grain + 0.04 * activity - 0.08 * chikei - 0.1 * nie * resolved,
-    reflectance: 0.82 + 0.15 * grain - 0.12 * chikei + 0.03 * nie * resolved,
-    height: 0.0006 * grain + 0.00035 * chikei + 0.0007 * nie * resolved,
+    roughness: 0.5 + 0.46 * grain + 0.04 * activity - 0.07 * chikei - 0.08 * nie * resolved,
+    reflectance: 0.76 + 0.2 * grain + 0.035 * activity - 0.07 * chikei,
+    height: 0.0009 * grain + 0.00025 * chikei + 0.00035 * nie * resolved,
   }
 }

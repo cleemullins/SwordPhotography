@@ -1,5 +1,5 @@
 import { Color, RectAreaLight, Vector3 } from 'three/webgpu'
-import { TUBE_LENGTH } from './model'
+import { TUBE_LENGTH, TUBE_RADIANCE } from './model'
 import type { LightSettings } from './model'
 
 export const TUBE_SEGMENTS = 48
@@ -10,8 +10,8 @@ class CircularAreaLight extends RectAreaLight {
 }
 
 export function createTubeEmitters() {
-  return [...Array.from({ length: TUBE_SEGMENTS }, () => new RectAreaLight(RADIANCE, 6)),
-    new CircularAreaLight(RADIANCE, 6), new CircularAreaLight(RADIANCE, 6)]
+  return [...Array.from({ length: TUBE_SEGMENTS }, () => new RectAreaLight(RADIANCE, TUBE_RADIANCE)),
+    new CircularAreaLight(RADIANCE, TUBE_RADIANCE), new CircularAreaLight(RADIANCE, TUBE_RADIANCE)]
 }
 
 export function updateTubeEmitters(emitters: RectAreaLight[], tube: LightSettings, diameter: number) {

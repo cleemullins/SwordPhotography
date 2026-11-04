@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { bladeAngles } from '../src/model'
 import { HISTORICAL_PRESETS } from '../src/historical-presets'
-import { saved, noGPU, details, samples } from './helpers'
+import { saved, noGPU, samples } from './helpers'
 
 test('designer retains historical provenance, coupled dimensions and persistence', async ({ page }) => {
   await noGPU(page); await page.goto('/')
@@ -30,32 +30,34 @@ test('designer retains historical provenance, coupled dimensions and persistence
   await expect(page.locator('.field-error')).toHaveCount(0)
 })
 
-test('meter once is blade-masked, preserves aperture and lights, and reports dark scenes', async ({ page }) => {
+test('Auto shutter replaces one-shot metering, preserves aperture and lights, and reports dark scenes', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message))
   await page.goto('/')
   await page.getByLabel('Blade preset', { exact: true }).selectOption(HISTORICAL_PRESETS[0].name)
   await page.getByRole('button', { name: 'Suggest light positions' }).click()
-  await page.getByLabel('Aperture', { exact: true }).fill('8')
-  await details(page, 'Advanced camera')
-  await page.getByLabel('Shutter time', { exact: true }).fill('0.000125')
+  await expect(page.getByRole('button', { name: 'Suggest light positions' })).toBeEnabled()
+  await page.getByLabel('Camera aperture', { exact: true }).fill('8')
+  await page.getByRole('slider', { name: 'Shutter speed' }).focus()
+  await page.keyboard.press('Home')
+  await page.getByLabel('Auto shutter', { exact: true }).check()
   await samples(page, 32)
   await page.getByRole('button', { name: 'Pause rendering' }).click()
   const lights = (await saved(page)).lights
-  await page.getByRole('button', { name: 'Meter once', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Meter once', exact: true })).toHaveCount(0)
   await expect.poll(async () => (await saved(page)).camera.shutter).toBeGreaterThan(1 / 8000)
   const metered = await saved(page)
   expect(metered.camera.aperture).toBe(8); expect(metered.lights).toEqual(lights)
-  expect(metered.camera.autoExposure).toBe(false)
+  expect(metered.camera.autoExposure).toBe(true)
   await page.getByLabel('Inspect lighting').selectOption('left')
   await page.getByRole('button', { name: 'Clipping', exact: true }).click()
-  await page.getByLabel('Shutter time', { exact: true }).fill('30')
-  await page.getByRole('button', { name: 'Meter once', exact: true }).click()
+  await page.getByRole('slider', { name: 'Shutter speed' }).focus()
+  await page.keyboard.press('End')
+  await page.getByLabel('Auto shutter', { exact: true }).check()
   await expect.poll(async () => (await saved(page)).camera.shutter / metered.camera.shutter).toBeCloseTo(1, 1)
   await page.getByLabel('Left tube enabled', { exact: true }).uncheck()
   await page.getByLabel('Right tube enabled', { exact: true }).uncheck()
   const shutter = (await saved(page)).camera.shutter
-  await page.getByRole('button', { name: 'Meter once', exact: true }).click()
-  await expect(page.locator('.error-banner')).toContainText('Blade is dark')
+  await expect(page.locator('.auto-shutter-status')).toContainText('Blade is dark')
   expect((await saved(page)).camera.shutter).toBe(shutter)
   expect(errors).toEqual([])
 })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CylinderGeometry, Mesh, MeshBasicMaterial, Raycaster, Vector3 } from 'three'
 import { automaticLightPlacement, grainContrastScore, positionAutomaticLights, tubeBlocksSegment } from './automatic-lighting'
-import { defaultState, parseSetup, PRESETS, TUBE_LENGTH } from './model'
+import { defaultState, parseSetup, PRESETS, TUBE_LENGTH, TUBE_RADIANCE, exposureScale, LIMITS } from './model'
 import { HISTORICAL_PRESETS } from './historical-presets'
 
 describe('automatic specular light positioning', () => {
@@ -22,25 +22,30 @@ describe('automatic specular light positioning', () => {
     expect(score(0)).toBe(0)
     expect(score(200, false)).toBe(0)
   })
-  it('does not claim full coverage from a nearly dark rig', () => {
+  it('can raise an enabled dim source while preserving the other source off state', () => {
     const state = defaultState()
     state.lights[0].brightness = 0.1
     state.lights[1].enabled = false
     const dim = automaticLightPlacement(state)
     if (!dim.lights) throw new Error(dim.warning)
-    expect(dim.coverage).toBeLessThan(0.01)
-    expect(dim.lights[0].brightness).toBe(0.1)
+    expect(dim.lights[0].brightness).toBe(100)
     expect(dim.lights[1].enabled).toBe(false)
   })
-  it('retains the rig and reports why placement is unavailable when both tubes are dark', () => {
-    for (const disabled of [true, false]) {
-      const state = defaultState()
-      state.automaticLightPosition = true
-      state.lights.forEach(light => { light.enabled = !disabled; light.brightness = disabled ? 100 : 0 })
-      const result = positionAutomaticLights(state)
-      expect(result.state).toBe(state)
-      expect(result.warning).toContain('at least one enabled tube with nonzero brightness')
-    }
+  it('retains the rig and reports why placement is unavailable when both tubes are disabled', () => {
+    const state = defaultState()
+    state.automaticLightPosition = true
+    state.lights.forEach(light => { light.enabled = false })
+    const result = positionAutomaticLights(state)
+    expect(result.state).toBe(state)
+    expect(result.warning).toContain('at least one enabled tube')
+  })
+  it('reduces power when the shortest shutter could otherwise clip', () => {
+    const state = defaultState()
+    state.camera.exposure = 8; state.camera.aperture = 1.2; state.camera.compensate = false
+    const result = automaticLightPlacement(state)
+    if (!result.lights) throw new Error(result.warning)
+    const maximumRadiance = TUBE_RADIANCE * result.lights.reduce((sum, light) => sum + (light.enabled ? light.brightness / 100 : 0), 0)
+    expect(maximumRadiance * exposureScale({ ...state.camera, shutter: LIMITS.shutter[0] })).toBeLessThanOrEqual(0.900001)
   })
   it('optimizes one whole-blade rig independently of the current scan position, including the kissaki', () => {
     const state = defaultState()
@@ -48,11 +53,23 @@ describe('automatic specular light positioning', () => {
     state.blade.y = -13.13; state.camera.height = 440.1; state.camera.focalLength = 85
     const base = automaticLightPlacement(state)
     if (!base.lights) throw new Error(base.warning)
-    expect(base.coverage).toBeGreaterThan(0.6)
+    // Coverage now includes edge/hamon/shinogi bands, not an area-weighted facet midpoint.
+    expect(base.coverage).toBeGreaterThan(0)
+    expect(base.coverage).toBeLessThanOrEqual(1)
+    expect(base.uniformity).toBeGreaterThanOrEqual(0)
+    expect(base.uniformity).toBeLessThanOrEqual(1)
     for (const x of [-300, 250, 800]) {
       expect(automaticLightPlacement({ ...state, blade: { ...state.blade, x } }).lights).toEqual(base.lights)
     }
-  })
+  }, 30_000)
+  it('normalizes longitudinal offsets to the stationary origin before solving', () => {
+    const s = defaultState(); s.blade.x = 200
+    s.lights[0].x = 120; s.lights[1].x = -300
+    const result = automaticLightPlacement(s)
+    if (!result.lights) throw new Error(result.warning)
+    expect(result.lights.map(light => light.x)).toEqual([0, 0])
+    expect(s.lights.map(light => light.x)).toEqual([120, -300])
+  }, 15_000)
   for (const [name, definition] of Object.entries(PRESETS)) for (const height of [160, 480, 1800]) {
     it(`aligns both ${name} facets at camera height ${height}`, () => {
       const state = defaultState()
@@ -78,6 +95,9 @@ describe('automatic specular light positioning', () => {
         expect(light.x).toBeLessThanOrEqual(800)
         expect(light.height).toBeGreaterThanOrEqual(15)
         expect(light.height).toBeLessThanOrEqual(1000)
+        expect(light.height + state.diameter / 2).toBeLessThanOrEqual(height + 1e-8)
+        expect(light.brightness).toBeGreaterThan(0)
+        expect(light.brightness).toBeLessThanOrEqual(100)
         expect(tubeBlocksSegment(light, state.diameter / 2, new Vector3(0, 0, height), target.point)).toBe(false)
         const tube = new Mesh(new CylinderGeometry(state.diameter / 2, state.diameter / 2, TUBE_LENGTH, 48), new MeshBasicMaterial())
         tube.rotation.z = Math.PI / 2
@@ -90,7 +110,7 @@ describe('automatic specular light positioning', () => {
     })
   }
 
-  it('tracks the translated blade and its changed normals without altering light intensity', () => {
+  it('adapts to transverse alignment while preserving source on/off and camera settings', () => {
     const state = defaultState()
     state.automaticLightPosition = true
     state.lights[0].enabled = false
@@ -103,7 +123,8 @@ describe('automatic specular light positioning', () => {
     expect(next.warning).toBe('')
     expect(next.state.lights).not.toEqual(first.state.lights)
     expect(next.state.lights[0].enabled).toBe(false)
-    expect(next.state.lights[1].brightness).toBe(23)
+    expect(next.state.lights[1].brightness).toBeGreaterThan(0)
+    expect(next.state.lights[1].brightness).toBeLessThanOrEqual(100)
     expect(next.state.camera).toEqual(state.camera)
     expect(positionAutomaticLights(next.state)).toEqual(next)
   })

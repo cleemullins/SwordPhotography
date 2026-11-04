@@ -1,15 +1,15 @@
-import { clamp, fieldOfView } from './model'
+import { clamp, fieldOfView, withCenteredTubes } from './model'
 import type { StudioState } from './model'
 import { focusOnBlade } from './framing'
 
 export function prepareSetup(state: StudioState): StudioState {
-  const manual = { ...state, automaticLightPosition: false, camera: { ...state.camera, autoExposure: false } }
+  const manual = { ...withCenteredTubes(state), automaticLightPosition: false }
   return state.scan.locked ? manual : focusOnBlade(manual)
 }
 
 export function updateRig(previous: StudioState, next: StudioState): StudioState {
   if (previous.scan.locked && next.scan.locked) {
-    return { ...previous, scan: next.scan, blade: { ...previous.blade, x: next.blade.x } }
+    return withCenteredTubes({ ...previous, scan: next.scan, referenceTape: next.referenceTape, blade: { ...previous.blade, x: next.blade.x } })
   }
   return prepareSetup(next)
 }

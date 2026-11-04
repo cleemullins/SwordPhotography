@@ -119,11 +119,18 @@ diagnostics, and saves reproducible setups and previews. Suggest a single lighti
 arrangement across the whole blade, then lock the rig and inspect overlapping scan
 positions without changing the exposure.
 
-Shutter, aperture and both brightness controls sit directly above the camera
-image. The top view shows actual tube/blade X/Y positions at one physical scale,
+Shutter, aperture and both brightness controls sit in a compact pinned strip above
+the full-width camera image. The top view shows actual tube/blade X/Y positions at one physical scale,
 while the end-on view controls side offset and height. The blade, not the camera
-or lights, moves during scan preview. A yellow metric tape moves with the table
-and is included in saved previews.
+or lights, moves during scan preview. A bright yellow metric overlay above the
+blade follows table coordinates and is included in saved previews.
+An orbitable shaded 3D overview shows the moving table and blade together with
+the camera and both tubes. The end-on diagram displays their dimensions directly.
+Hada is selectable through illustrated grain pickers. Optional Auto shutter
+protects rendered blade highlights during setup and pauses when the rig is locked.
+Historical presets link to their original photographs through More; enlarged
+comparisons were removed because source detail was insufficient. A separate Met
+Museum viewer supports full-resolution material study.
 It requires a supported desktop browser/GPU; the original offline
 [geometry calculator](docs/lighting/nihonto-lighting.html) remains available.
 

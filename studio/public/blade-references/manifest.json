@@ -1,0 +1,375 @@
+[
+  {
+    "name": "Aoe - Juyo 35",
+    "sourcePage": "https://www.aoijapan.net/katana-mumeiaoe-35th-nbthk-juyo-paper/",
+    "imageUrl": "https://www.aoijapan.com/img/sword/2015/15667-2.jpg",
+    "file": "aoe-juyo-35/original.jpg",
+    "bytes": 2731309,
+    "sha256": "579f781c4e9ba185edc60bb253424c08d6912afda79366f9efcb8277afb3b4dd",
+    "width": 1570,
+    "height": 6661,
+    "id": "aoe-juyo-35",
+    "lengthMm": 742,
+    "base": {
+      "x": 766.5,
+      "y": 5310
+    },
+    "tip": {
+      "x": 522.0,
+      "y": 41
+    },
+    "crop": {
+      "x": 508,
+      "y": 0,
+      "width": 508,
+      "height": 5312
+    },
+    "flipAcross": 1,
+    "background": "#000000",
+    "rights": "Permission to bundle these dealer photographs confirmed by the user on 2026-11-04. Copyright remains with the source; not public domain.",
+    "calibration": "Approximate manually reviewed blade-base and tip endpoints; rotation and uniform scale only. Source lighting and perspective are not calibrated.",
+    "sourceFileName": "aoe-juyo-35-15667-2.jpg",
+    "retrievedAt": "2026-11-04",
+    "detailImages": []
+  },
+  {
+    "name": "Fukuoka Ichimonji - Juyo 56",
+    "sourcePage": "https://www.aoijapan.net/katana-mumei-fukuoka-ichomonji56th-nbthk-juyo-paper/",
+    "imageUrl": "https://www.aoijapan.com/img/sword/2014/14900-2.jpg",
+    "file": "fukuoka-ichimonji-juyo-56/original.jpg",
+    "bytes": 4801023,
+    "sha256": "e2423c5264b616641c339ba1d414f9744b428aed47903a42c82540f3af5c68bb",
+    "width": 2000,
+    "height": 7408,
+    "id": "fukuoka-ichimonji-juyo-56",
+    "lengthMm": 703,
+    "base": {
+      "x": 1755.0,
+      "y": 5750
+    },
+    "tip": {
+      "x": 1503.0,
+      "y": 87
+    },
+    "crop": {
+      "x": 1495,
+      "y": 0,
+      "width": 505,
+      "height": 5752
+    },
+    "flipAcross": 1,
+    "background": "#000000",
+    "rights": "Permission to bundle these dealer photographs confirmed by the user on 2026-11-04. Copyright remains with the source; not public domain.",
+    "calibration": "Approximate manually reviewed blade-base and tip endpoints; rotation and uniform scale only. Source lighting and perspective are not calibrated.",
+    "sourceFileName": "fukuoka-ichimonji-juyo-56-14900-2.jpg",
+    "retrievedAt": "2026-11-04",
+    "detailImages": []
+  },
+  {
+    "name": "Ayanokoji - Juyo 66",
+    "sourcePage": "https://nihonto.com.au/product/rai-kunizane-katana-with-nbthk-tokubetsu-hozon-certificate/",
+    "imageUrl": "https://nihonto.com.au/wp-content/uploads/2020/04/KUNIZANE-17.png",
+    "file": "ayanokoji-juyo-66/original.png",
+    "bytes": 553417,
+    "sha256": "a0566d51c020c52ebd7bcf088d85460b4580e53e2aa5dce23e496c691f96665b",
+    "width": 934,
+    "height": 234,
+    "id": "ayanokoji-juyo-66",
+    "lengthMm": 741,
+    "base": {
+      "x": 278,
+      "y": 42
+    },
+    "tip": {
+      "x": 861,
+      "y": 122
+    },
+    "crop": {
+      "x": 274,
+      "y": 25,
+      "width": 595,
+      "height": 102
+    },
+    "flipAcross": -1,
+    "background": "#000000",
+    "rights": "Permission to bundle these dealer photographs confirmed by the user on 2026-11-04. Copyright remains with the source; not public domain.",
+    "calibration": "Approximate manually reviewed blade-base and tip endpoints; rotation and uniform scale only. Source lighting and perspective are not calibrated.",
+    "sourceFileName": "ayanokoji-juyo-66-KUNIZANE-17.png",
+    "retrievedAt": "2026-11-04",
+    "detailImages": [
+      {
+        "name": "Ayanokoji - Juyo 66",
+        "sourcePage": "https://nihonto.com.au/product/rai-kunizane-katana-with-nbthk-tokubetsu-hozon-certificate/",
+        "imageUrl": "https://nihonto.com.au/wp-content/uploads/2020/04/KUNIZANE-16.png",
+        "file": "ayanokoji-juyo-66/detail-1.png",
+        "bytes": 888034,
+        "sha256": "eaf69a575109a368335a6329b9244eb9bec39f639050e9135ba1c44790f79d56",
+        "width": 1009,
+        "height": 349
+      }
+    ]
+  },
+  {
+    "name": "Tametsugu - Juyo 11",
+    "sourcePage": "https://nihonto.com.au/product/tametsugu-juyo-token/",
+    "imageUrl": "https://nihonto.com.au/wp-content/uploads/2020/06/tametsugu-09.png",
+    "file": "tametsugu-juyo-11/original.png",
+    "bytes": 615473,
+    "sha256": "ca1fda6ec1bdc1d9696014d97c988b8f0c24288cc8bb0ba79e0bcd8f090bdea8",
+    "width": 1153,
+    "height": 200,
+    "id": "tametsugu-juyo-11",
+    "lengthMm": 757,
+    "base": {
+      "x": 834,
+      "y": 124
+    },
+    "tip": {
+      "x": 40,
+      "y": 106
+    },
+    "crop": {
+      "x": 34,
+      "y": 100,
+      "width": 803,
+      "height": 65
+    },
+    "flipAcross": -1,
+    "background": "#000000",
+    "rights": "Permission to bundle these dealer photographs confirmed by the user on 2026-11-04. Copyright remains with the source; not public domain.",
+    "calibration": "Approximate manually reviewed blade-base and tip endpoints; rotation and uniform scale only. Source lighting and perspective are not calibrated.",
+    "sourceFileName": "tametsugu-juyo-11-tametsugu-09.png",
+    "retrievedAt": "2026-11-04",
+    "detailImages": [
+      {
+        "name": "Tametsugu - Juyo 11",
+        "sourcePage": "https://nihonto.com.au/product/tametsugu-juyo-token/",
+        "imageUrl": "https://nihonto.com.au/wp-content/uploads/2020/06/tametsugu-07.png",
+        "file": "tametsugu-juyo-11/detail-1.png",
+        "bytes": 539761,
+        "sha256": "3733caef77e0dadd06eae1eecd50f64746a0364a38c0e08c53b55ecc81441583",
+        "width": 969,
+        "height": 321
+      },
+      {
+        "name": "Tametsugu - Juyo 11",
+        "sourcePage": "https://nihonto.com.au/product/tametsugu-juyo-token/",
+        "imageUrl": "https://nihonto.com.au/wp-content/uploads/2020/06/tametsugu-08.png",
+        "file": "tametsugu-juyo-11/detail-2.png",
+        "bytes": 1036001,
+        "sha256": "65858652a89a18f42a4a7d991863ebf6bc01d7ee794ea5088997e03cbcccbb2b",
+        "width": 1077,
+        "height": 460
+      }
+    ]
+  },
+  {
+    "name": "Rai Kunimitsu - Juyo 49",
+    "sourcePage": "https://www.aoijapan.net/katana-mumei-rai-kunimitsu49th-nbthk-juyo-paper/",
+    "imageUrl": "https://www.aoijapan.com/img/sword/2015/15903-2.jpg",
+    "file": "rai-kunimitsu-juyo-49/original.jpg",
+    "bytes": 3997499,
+    "sha256": "3d244c05fa30d327310cbe30cef41d050b47c5ff9b9077a3fddb4734badbb944",
+    "width": 1600,
+    "height": 6712,
+    "id": "rai-kunimitsu-juyo-49",
+    "lengthMm": 651,
+    "base": {
+      "x": 1408.5,
+      "y": 5075
+    },
+    "tip": {
+      "x": 1207.5,
+      "y": 91
+    },
+    "crop": {
+      "x": 1196,
+      "y": 0,
+      "width": 404,
+      "height": 5077
+    },
+    "flipAcross": 1,
+    "background": "#000000",
+    "rights": "Permission to bundle these dealer photographs confirmed by the user on 2026-11-04. Copyright remains with the source; not public domain.",
+    "calibration": "Approximate manually reviewed blade-base and tip endpoints; rotation and uniform scale only. Source lighting and perspective are not calibrated.",
+    "sourceFileName": "rai-kunimitsu-juyo-49-15903-2.jpg",
+    "retrievedAt": "2026-11-04",
+    "detailImages": []
+  },
+  {
+    "name": "Den Kanemitsu - Juyo 13",
+    "sourcePage": "https://www.aoijapan.net/katana-mumei-den-kanemitsujyuyo-token-13/",
+    "imageUrl": "https://www.aoijapan.com/img/sword/2013/13049-2.jpg",
+    "file": "den-kanemitsu-juyo-13/original.jpg",
+    "bytes": 4310883,
+    "sha256": "59d54ffb37a66297f86288a41b451366d7166da2e19f9089e31ffef59b66f5a3",
+    "width": 2085,
+    "height": 7658,
+    "id": "den-kanemitsu-juyo-13",
+    "lengthMm": 757,
+    "base": {
+      "x": 1841.0,
+      "y": 6100
+    },
+    "tip": {
+      "x": 1588.0,
+      "y": 107
+    },
+    "crop": {
+      "x": 1582,
+      "y": 0,
+      "width": 503,
+      "height": 6102
+    },
+    "flipAcross": 1,
+    "background": "#000000",
+    "rights": "Permission to bundle these dealer photographs confirmed by the user on 2026-11-04. Copyright remains with the source; not public domain.",
+    "calibration": "Approximate manually reviewed blade-base and tip endpoints; rotation and uniform scale only. Source lighting and perspective are not calibrated.",
+    "sourceFileName": "den-kanemitsu-juyo-13-13049-2.jpg",
+    "retrievedAt": "2026-11-04",
+    "detailImages": []
+  },
+  {
+    "name": "Masatsune (Ko-Aoe) - Juyo 49",
+    "sourcePage": "https://www.aoijapan.net/tachi-masatsune-49th-nbthk-juyo-paper/",
+    "imageUrl": "https://www.aoijapan.com/img/sword/2014/14307-2.jpg",
+    "file": "masatsune-ko-aoe-juyo-49/original.jpg",
+    "bytes": 2837694,
+    "sha256": "2e1421a7435625efe9cebb9bc10e9fc1f36ac341b50358669f540ea93ecc77fd",
+    "width": 2072,
+    "height": 6280,
+    "id": "masatsune-ko-aoe-juyo-49",
+    "lengthMm": 725,
+    "base": {
+      "x": 1864.5,
+      "y": 4805
+    },
+    "tip": {
+      "x": 1549.5,
+      "y": 73
+    },
+    "crop": {
+      "x": 1546,
+      "y": 0,
+      "width": 526,
+      "height": 4807
+    },
+    "flipAcross": 1,
+    "background": "#000000",
+    "rights": "Permission to bundle these dealer photographs confirmed by the user on 2026-11-04. Copyright remains with the source; not public domain.",
+    "calibration": "Approximate manually reviewed blade-base and tip endpoints; rotation and uniform scale only. Source lighting and perspective are not calibrated.",
+    "sourceFileName": "masatsune-ko-aoe-juyo-49-14307-2.jpg",
+    "retrievedAt": "2026-11-04",
+    "detailImages": []
+  },
+  {
+    "name": "Norishige - Juyo 67",
+    "sourcePage": "https://www.aoijapan.com/consignment-sale-katanamumei-unsignednorishige-%e5%89%87%e9%87%8d-67th-nbthk-juyo-token/",
+    "imageUrl": "https://www.aoijapan.com/img/sword/2026/26502-2.jpg",
+    "file": "norishige-juyo-67/original.jpg",
+    "bytes": 12584019,
+    "sha256": "5a345d9b37af068c2273e91fd9c66a11146c9e244d9d4534c9004869f1bc35f6",
+    "width": 2400,
+    "height": 9062,
+    "id": "norishige-juyo-67",
+    "lengthMm": 702,
+    "base": {
+      "x": 2121.5,
+      "y": 6790
+    },
+    "tip": {
+      "x": 1800.5,
+      "y": 68
+    },
+    "crop": {
+      "x": 1795,
+      "y": 0,
+      "width": 605,
+      "height": 6792
+    },
+    "flipAcross": 1,
+    "background": "#000000",
+    "rights": "Permission to bundle these dealer photographs confirmed by the user on 2026-11-04. Copyright remains with the source; not public domain.",
+    "calibration": "Approximate manually reviewed blade-base and tip endpoints; rotation and uniform scale only. Source lighting and perspective are not calibrated.",
+    "sourceFileName": "norishige-juyo-67-26502-2.jpg",
+    "retrievedAt": "2026-11-04",
+    "detailImages": [
+      {
+        "name": "Norishige - Juyo 67",
+        "sourcePage": "https://www.aoijapan.com/consignment-sale-katanamumei-unsignednorishige-%e5%89%87%e9%87%8d-67th-nbthk-juyo-token/",
+        "imageUrl": "https://www.aoijapan.com/img/sword/2026/26502-3.jpg",
+        "file": "norishige-juyo-67/detail-1.jpg",
+        "bytes": 2477826,
+        "sha256": "2de45c688e0cd7b03e6f1be98ef9b0f439bb9e54814d90ea51597f9480ea816f",
+        "width": 1000,
+        "height": 9479
+      }
+    ]
+  },
+  {
+    "name": "Sanekage - Juyo 20",
+    "sourcePage": "https://www.aoijapan.net/katana-mumei-sanekage20th-nbthk-juyo-paper/",
+    "imageUrl": "https://www.aoijapan.com/img/sword/2013/13682-2.jpg",
+    "file": "sanekage-juyo-20/original.jpg",
+    "bytes": 1701026,
+    "sha256": "dd16763f016fab0c9be9ba99f2ea19794e6e7471e666b1a2b246c1162ba6e1dc",
+    "width": 1200,
+    "height": 4280,
+    "id": "sanekage-juyo-20",
+    "lengthMm": 638,
+    "base": {
+      "x": 1049.5,
+      "y": 3350
+    },
+    "tip": {
+      "x": 923.0,
+      "y": 48
+    },
+    "crop": {
+      "x": 905,
+      "y": 0,
+      "width": 295,
+      "height": 3352
+    },
+    "flipAcross": 1,
+    "background": "#000000",
+    "rights": "Permission to bundle these dealer photographs confirmed by the user on 2026-11-04. Copyright remains with the source; not public domain.",
+    "calibration": "Approximate manually reviewed blade-base and tip endpoints; rotation and uniform scale only. Source lighting and perspective are not calibrated.",
+    "sourceFileName": "sanekage-juyo-20-13682-2.jpg",
+    "retrievedAt": "2026-11-04",
+    "detailImages": []
+  },
+  {
+    "name": "Nanki Shigekuni - Juyo",
+    "sourcePage": "https://world-seiyudo.com/product/ka-010521/",
+    "imageUrl": "https://world-seiyudo.com/wp-content/uploads/2021/01/KA-010521-950a-1.jpg",
+    "file": "nanki-shigekuni-juyo/original.jpg",
+    "bytes": 1122798,
+    "sha256": "3462f90e72242180a4435bae714addfb5aedf8b2d09ed3c443575a68b8e044e8",
+    "width": 950,
+    "height": 6500,
+    "id": "nanki-shigekuni-juyo",
+    "lengthMm": 700,
+    "base": {
+      "x": 698.5,
+      "y": 4830
+    },
+    "tip": {
+      "x": 502.0,
+      "y": 124
+    },
+    "crop": {
+      "x": 475,
+      "y": 0,
+      "width": 475,
+      "height": 4832
+    },
+    "flipAcross": 1,
+    "background": "#000000",
+    "rights": "Permission to bundle these dealer photographs confirmed by the user on 2026-11-04. Copyright remains with the source; not public domain.",
+    "calibration": "Approximate manually reviewed blade-base and tip endpoints; rotation and uniform scale only. Source lighting and perspective are not calibrated.",
+    "sourceFileName": "nanki-shigekuni-juyo-KA-010521-950a-1.jpg",
+    "retrievedAt": "2026-11-04",
+    "detailImages": []
+  }
+]

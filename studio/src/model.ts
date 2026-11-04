@@ -76,6 +76,7 @@ export const TUBE_FIXTURE = {
   illuminance: [{ distance: 1, lux: 750 }, { distance: 0.5, lux: 2180 }],
 } as const
 export const TUBE_LENGTH = TUBE_FIXTURE.length
+export const TUBE_RADIANCE = 6
 export const LIMITS = {
   height: [160, 1800], focalLength: [20, 135], aperture: [1.2, 11],
   focus: [140, 2000], exposure: [-6, 8], x: [-800, 800], y: [-450, 450],
@@ -98,13 +99,18 @@ export function defaultState(): StudioState {
     scan: { start: 0, end: 700, step: 50, locked: false },
     automaticLightPosition: false,
     camera: { height: 480, focalLength: 60, aperture: 5.6, focus: 477, exposure: -1.5, compensate: true, shutter: 1 / 125, autoExposure: false },
-    blade: { name: 'Shinogi-zukuri', definition: { ...PRESETS['Shinogi-zukuri'] }, x: 0, y: 0, roughness: 0.12, detail: true, hada: 'none' },
+    blade: { name: 'Shinogi-zukuri', definition: { ...PRESETS['Shinogi-zukuri'] }, x: 0, y: 0, roughness: 0.12, detail: true, hada: 'itame' },
     lights: [
       { enabled: true, x: 0, y: -110, height: 380, brightness: 100 },
       { enabled: true, x: 0, y: 110, height: 760, brightness: 65 },
     ],
     diameter: TUBE_FIXTURE.depth,
   }
+}
+
+export function withCenteredTubes(state: StudioState): StudioState {
+  if (state.lights.every(light => light.x === 0)) return state
+  return { ...state, lights: [{ ...state.lights[0], x: 0 }, { ...state.lights[1], x: 0 }] }
 }
 
 export function fieldOfView(camera: StudioState['camera']) {

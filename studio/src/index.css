@@ -23,6 +23,8 @@
   --cp-panel-strong: rgba(255, 255, 255, 0.96);
   --cp-sheen: rgba(255, 255, 255, 0.55);
   --cp-highlight: rgba(177, 31, 75, 0.12);
+  --cp-tape-bg: #ffdc28;
+  --cp-tape-ink: #181510;
   --mono: Consolas, "Courier New", Courier, monospace;
 }
 html[data-theme="dark"] {

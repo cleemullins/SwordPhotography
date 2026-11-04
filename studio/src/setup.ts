@@ -10,13 +10,13 @@ export function setupProjection(state: StudioState): SetupProjection {
     ...state.lights.map(l => Math.abs(l.y) + state.diameter / 2))
   const height = Math.max(state.camera.height, ...state.lights.map(l => l.height + state.diameter / 2))
   const belowFloor = Math.max(0, ...state.lights.map(l => state.diameter / 2 - l.height))
-  return { scale: Math.min(185 / extent, 270 / height, belowFloor > 0 ? 24 / belowFloor : Infinity), center: 230, floor: 330 }
+  return { scale: Math.min(145 / extent, 270 / height, belowFloor > 0 ? 24 / belowFloor : Infinity), center: 230, floor: 330 }
 }
 
 export function setupPointFits(state: StudioState, target: SetupTarget, position: SetupPosition, projection: SetupProjection) {
   const radius = target === 'camera' ? 23 : Math.max(23, state.diameter / 2 * projection.scale)
   const x = projection.center + position.y * projection.scale, y = projection.floor - position.height * projection.scale
-  return x - radius >= 16 && x + radius <= 444 && y - Math.max(38, radius) >= 8 && y + radius <= 360
+  return x - radius >= 60 && x + radius <= 408 && y - Math.max(38, radius) >= 8 && y + radius <= 360
 }
 
 export function setupDragProjection(state: StudioState, target: SetupTarget, position: SetupPosition, projection: SetupProjection): SetupProjection {

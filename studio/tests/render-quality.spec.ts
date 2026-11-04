@@ -17,19 +17,21 @@ function referenceState() {
   return state
 }
 
-test('include tape restores a clipped reference without changing longitudinal scan or tubes', async ({ page }) => {
+test('metric overlay is visible without moving the rig and remains toggleable while locked', async ({ page }) => {
   await noGPU(page); await page.goto('/')
   const state = defaultState()
   state.blade.y = 80; state.blade.x = 100; state.referenceTape = false
   await load(page, state)
-  await page.getByRole('button', { name: 'Include tape in frame' }).click()
+  await page.getByRole('button', { name: 'Metric tape', exact: true }).click()
   await expect.poll(async () => (await saved(page)).referenceTape).toBe(true)
   const next = await saved(page)
   expect(next.blade.x).toBe(state.blade.x); expect(next.lights).toEqual(state.lights)
-  const upper = next.blade.y + next.blade.definition.width / 2 + next.blade.definition.curvature + 23
-  expect(upper).toBeLessThan(fieldOfView(next.camera).height / 2)
+  expect(next.blade.y).toBe(state.blade.y)
+  expect(next.camera.height).toBe(state.camera.height)
+  await expect(page.getByRole('img', { name: 'Metric tape overlay' })).toHaveCount(1)
   await page.getByRole('button', { name: 'Lock rig / Preview scan' }).click()
-  await expect(page.getByRole('button', { name: 'Include tape in frame' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Metric tape', exact: true }).click()
+  await expect(page.getByRole('img', { name: 'Metric tape overlay' })).toHaveCount(0)
 })
 
 test('fine-detail captures retain render resolution and grain across illuminated facets', async ({ page }) => {

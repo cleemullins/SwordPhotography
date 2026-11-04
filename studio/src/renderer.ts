@@ -9,9 +9,9 @@ import { WebGPUPathTracer } from 'three-gpu-pathtracer/webgpu'
 import { makeRenderBlade, makeBladeTextures, HADA_NORMAL_SCALE } from './blade'
 import { SENSOR, TUBE_LENGTH, exposureScale, fieldOfView } from './model'
 import type { StudioState, Quality, ViewMode, Overlays } from './model'
-import { meterBlade } from './exposure'
+import { protectHighlights } from './exposure'
 import type { ExposureReading } from './exposure'
-import { makeTapeTexture, TAPE_WIDTH, TAPE_GAP } from './tape'
+import { drawMetricTape } from './tape'
 import { createTubeEmitters, updateTubeEmitters, TUBE_SEGMENTS } from './tube-light'
 
 export interface RenderStats {
@@ -94,10 +94,6 @@ export class StudioRenderer {
   private polish: ReturnType<typeof makeBladeTextures>['polish']
   private grainNormals: ReturnType<typeof makeBladeTextures>['normals']
   private grainReflectance: ReturnType<typeof makeBladeTextures>['reflectance']
-  private tapeTexture: ReturnType<typeof makeTapeTexture>
-  private tapeGeometry: PlaneGeometry
-  private tapeMaterial: MeshStandardMaterial
-  private tapes: Mesh[] = []
   private tubeGeometry = new CylinderGeometry(1, 1, 1, TUBE_SEGMENTS, 1, false)
   private bedGeometry = new PlaneGeometry(4, 3)
   private bedMaterial = new MeshStandardMaterial({ color: new Color(0.008, 0.009, 0.01), roughness: 0.95 })
@@ -115,8 +111,8 @@ export class StudioRenderer {
   private green = uniform(new Color())
   private postMaterial = new MeshBasicNodeMaterial()
   private quad: QuadMesh
-  private meterTarget = new RenderTarget(256, 170, { type: FloatType, depthBuffer: false })
   private meterMaterial = new MeshBasicNodeMaterial()
+  private highlightTarget = new RenderTarget(1, 1, { type: FloatType, depthBuffer: false })
   private meterQuad: QuadMesh
   private revision = 0
   private samples = 0
@@ -147,9 +143,6 @@ export class StudioRenderer {
     const surface = makeBladeTextures(state.blade.hada, state.blade.detail, state.blade.definition)
     this.polish = surface.polish; this.grainNormals = surface.normals
     this.grainReflectance = surface.reflectance
-    this.tapeTexture = makeTapeTexture(state.blade.definition.length)
-    this.tapeGeometry = new PlaneGeometry(state.blade.definition.length / 1000, TAPE_WIDTH)
-    this.tapeMaterial = new MeshStandardMaterial({ map: this.tapeTexture, roughness: 0.85, metalness: 0 })
     this.depthBlade = new Mesh(this.geometry, this.depthMaterial)
     this.renderer = new WebGPURenderer({ canvas, antialias: false, powerPreference: 'high-performance' })
     this.renderer.toneMapping = NoToneMapping
@@ -188,10 +181,8 @@ export class StudioRenderer {
       scene.background = new Color(0, 0, 0)
       const blade = new Mesh(this.geometry, this.bladeMaterial)
       const bed = new Mesh(this.bedGeometry, this.bedMaterial)
-      const tape = new Mesh(this.tapeGeometry, this.tapeMaterial)
-      this.tapes.push(tape)
       bed.position.z = -0.035
-      scene.add(blade, bed, tape)
+      scene.add(blade, bed)
       const tubes = [0, 1].map(() => {
         // Emission comes only from the matching analytic panels, never twice.
         const material = new MeshStandardMaterial({
@@ -242,10 +233,6 @@ export class StudioRenderer {
   private applyTransforms() {
     const s = this.state
     for (const blade of [...this.blades, this.depthBlade]) blade.position.set(s.blade.x / 1000, s.blade.y / 1000, 0)
-    for (const tape of this.tapes) {
-      tape.position.set(s.blade.x / 1000, s.blade.y / 1000 + this.geometry.boundingBox!.max.y + TAPE_GAP + TAPE_WIDTH / 2, 0)
-      tape.visible = s.referenceTape
-    }
     this.tubeMeshes.forEach(tubes => tubes.forEach((tube, i) => {
       const l = s.lights[i]
       tube.position.set(l.x / 1000, l.y / 1000, l.height / 1000)
@@ -283,7 +270,7 @@ export class StudioRenderer {
     this.revision++
     const old = this.state
     const definitionChanged = JSON.stringify(old.blade.definition) !== JSON.stringify(next.blade.definition)
-    const geometryChanged = definitionChanged || old.referenceTape !== next.referenceTape
+    const geometryChanged = definitionChanged
     const textureChanged = old.blade.hada !== next.blade.hada || old.blade.detail !== next.blade.detail ||
       definitionChanged
     const materialChanged = old.blade.roughness !== next.blade.roughness || textureChanged
@@ -300,24 +287,23 @@ export class StudioRenderer {
     }
     if (geometryChanged) {
       const oldGeometry = this.geometry
-      const oldTape = this.tapeGeometry, oldTapeTexture = this.tapeTexture
       this.geometry = makeRenderBlade(next.blade.definition)
-      this.tapeGeometry = new PlaneGeometry(next.blade.definition.length / 1000, TAPE_WIDTH)
-      this.tapeTexture = makeTapeTexture(next.blade.definition.length)
-      this.tapeMaterial.map = this.tapeTexture
-      for (const tape of this.tapes) tape.geometry = this.tapeGeometry
       for (const blade of [...this.blades, this.depthBlade]) blade.geometry = this.geometry
       this.applyTransforms(); this.applyMaterial(); this.updateCamera()
       this.scenes.forEach((s, i) => this.tracers[i].setScene(s, this.camera))
       oldGeometry.dispose()
-      oldTape.dispose(); oldTapeTexture.dispose()
     } else {
       if (transformsChanged) {
         this.applyTransforms()
         this.tracers.forEach(t => { t.updateTransforms(); t.updateLights() })
       }
       if (cameraChanged) { this.updateCamera(); this.tracers.forEach(t => t.updateCamera()) }
-      if (materialChanged) { this.applyMaterial(); this.tracers.forEach(t => t.updateMaterials()) }
+      if (materialChanged) {
+        this.applyMaterial()
+        // Adding/removing grain maps changes the shader's texture-info array capacity.
+        if (textureChanged) this.scenes.forEach((s, i) => this.tracers[i].setScene(s, this.camera))
+        else this.tracers.forEach(t => t.updateMaterials())
+      }
     }
     if (textureChanged) { previousPolish.dispose(); previousNormals?.dispose(); previousReflectance?.dispose() }
     if (geometryChanged || transformsChanged || cameraChanged || materialChanged) {
@@ -329,25 +315,20 @@ export class StudioRenderer {
     this.updateDisplay()
   }
 
-  async meterOnce(): Promise<ExposureReading> {
-    if (this.disposed || this.samples < 8) throw new Error('Wait for at least 8 stable samples before metering.')
-    const revision = this.revision
+  async meterHighlights(): Promise<ExposureReading | null> {
+    if (this.disposed || this.samples < 32 || this.depthDirty) return null
+    const revision = this.revision, camera = this.state.camera
+    const width = this.renderWidth, height = this.renderHeight
+    this.highlightTarget.setSize(width, height)
     try {
-      this.renderer.setRenderTarget(this.meterTarget)
+      this.renderer.setRenderTarget(this.highlightTarget)
       this.meterQuad.render(this.renderer)
     } finally {
       this.renderer.setRenderTarget(null)
     }
-    const pixels = await this.renderer.readRenderTargetPixelsAsync(this.meterTarget, 0, 0, 256, 170)
-    if (this.disposed || revision !== this.revision) throw new Error('The scene changed while metering. Meter again once it is still.')
-    const camera = { ...this.state.camera, compensate: false }
-    let reading = meterBlade(pixels, camera)
-    for (let i = 0; i < 20 && reading.status.startsWith('Adjusting'); i++) {
-      camera.shutter = reading.shutter
-      reading = meterBlade(pixels, camera)
-    }
-    if (reading.status.startsWith('Not enough') || reading.status.startsWith('Blade is dark')) throw new Error(reading.status)
-    return reading
+    const pixels = await this.renderer.readRenderTargetPixelsAsync(this.highlightTarget, 0, 0, width, height)
+    if (this.disposed || revision !== this.revision) return null
+    return protectHighlights(pixels, camera)
   }
 
   updateTheme() {
@@ -426,7 +407,7 @@ export class StudioRenderer {
     this.animation = requestAnimationFrame(this.tick)
   }
 
-  async capture(grid = false): Promise<Blob> {
+  async capture(): Promise<Blob> {
     const output = document.createElement('canvas')
     output.width = this.renderWidth; output.height = this.renderHeight
     const context = output.getContext('2d')
@@ -439,19 +420,7 @@ export class StudioRenderer {
       this.renderer.setDrawingBufferSize(this.width, this.height, this.pixelRatio)
       this.quad.render(this.renderer)
     }
-    if (grid) {
-      context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--cp-border-strong').trim()
-      context.globalAlpha = 0.65
-      context.lineWidth = Math.max(1, output.width / 900)
-      context.beginPath()
-      for (const fraction of [1 / 3, 2 / 3]) {
-        context.moveTo(output.width * fraction, 0); context.lineTo(output.width * fraction, output.height)
-        context.moveTo(0, output.height * fraction); context.lineTo(output.width, output.height * fraction)
-      }
-      context.moveTo(output.width * 0.489, output.height / 2); context.lineTo(output.width * 0.511, output.height / 2)
-      context.moveTo(output.width / 2, output.height * 0.483); context.lineTo(output.width / 2, output.height * 0.517)
-      context.stroke()
-    }
+    if (this.state.referenceTape) drawMetricTape(context, this.state, output.width, output.height, output.width / this.width)
     return new Promise((resolve, reject) => output.toBlob(blob =>
       blob ? resolve(blob) : reject(new Error('The browser could not capture the camera image.')), 'image/png'))
   }
@@ -469,10 +438,10 @@ export class StudioRenderer {
     this.tracers.forEach(t => t.dispose())
     this.tubeMeshes.flat().forEach(t => t.material.dispose())
     this.geometry.dispose(); this.tubeGeometry.dispose(); this.bedGeometry.dispose()
-    this.tapeGeometry.dispose(); this.tapeTexture.dispose(); this.tapeMaterial.dispose()
     this.bladeMaterial.dispose(); this.bedMaterial.dispose(); this.depthMaterial.dispose()
     this.polish.dispose(); this.grainNormals?.dispose(); this.grainReflectance?.dispose(); this.depthTarget.dispose(); this.postMaterial.dispose(); this.quad.dispose()
-    this.meterTarget.dispose(); this.meterMaterial.dispose(); this.meterQuad.dispose()
+    this.meterMaterial.dispose(); this.meterQuad.dispose()
+    this.highlightTarget.dispose()
     this.renderer.dispose()
   }
 }

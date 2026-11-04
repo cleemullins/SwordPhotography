@@ -39,9 +39,9 @@ test('fixed scan preserves rig values, endpoints and imported legacy focus are s
   await expect(page.getByRole('button', { name: 'Next frame' })).toBeDisabled()
   await page.getByRole('button', { name: 'Previous frame' }).click()
   await expect(page.getByLabel('Viewed position from base', { exact: true })).toHaveValue('90')
-  await page.getByRole('button', { name: 'Left light', exact: true }).click()
+  await page.getByRole('button', { name: 'Left light position', exact: true }).focus()
   await page.keyboard.press('ArrowUp')
-  await expect(page.getByLabel('Left height', { exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Left light position', exact: true })).toHaveAttribute('aria-disabled', 'true')
   await expect(page.getByRole('button', { name: 'Edit model...' })).toBeDisabled()
   await expect.poll(async () => (await saved(page)).blade.x).toBe(260)
   const after = await saved(page)
@@ -64,7 +64,11 @@ test('responsive layout and accessible advanced controls remain usable', async (
     expect(exposure!.y + exposure!.height).toBeLessThanOrEqual(image!.y + 2)
     expect(image!.y - exposure!.y - exposure!.height).toBeLessThan(3)
   }
-  await details(page, 'Advanced camera'); await details(page, 'Advanced rig')
+  await details(page, 'Advanced rig')
+  await expect(page.locator('summary').filter({ hasText: 'Advanced camera' })).toHaveCount(0)
+  for (const name of ['Meter once', 'Center blade', 'Center tube spans on blade']) {
+    await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0)
+  }
   for (const checkbox of await page.getByRole('checkbox').all()) {
     const description = await checkbox.getAttribute('aria-description')
     expect(description!.length).toBeGreaterThan(40)
@@ -88,17 +92,20 @@ test('quick exposure controls synchronize, persist, and respect the fixed rig lo
   await page.keyboard.press('End')
   await expect.poll(async () => (await saved(page)).camera.shutter).toBe(30)
   await panel.getByLabel('Camera aperture', { exact: true }).fill('8')
-  await expect(page.getByLabel('Aperture', { exact: true })).toHaveValue('8')
-  await page.getByLabel('Aperture', { exact: true }).fill('5.6')
+  await expect(page.getByLabel('Aperture', { exact: true })).toHaveCount(0)
+  await expect.poll(async () => (await saved(page)).camera.aperture).toBe(8)
+  await panel.getByLabel('Camera aperture', { exact: true }).fill('5.6')
   await expect(panel.getByLabel('Camera aperture', { exact: true })).toHaveValue('5.6')
   await panel.getByLabel('Left tube brightness', { exact: true }).fill('75')
   await panel.getByLabel('Right tube brightness', { exact: true }).fill('40')
-  await page.getByRole('button', { name: 'Left light', exact: true }).click()
-  await expect(page.getByLabel('Left brightness', { exact: true })).toHaveValue('75')
-  await page.getByLabel('Left brightness', { exact: true }).fill('80')
+  await page.getByRole('button', { name: 'Left light position', exact: true }).focus()
+  await expect(page.getByLabel('Left brightness', { exact: true })).toHaveCount(0)
+  await panel.getByLabel('Left tube brightness', { exact: true }).fill('80')
   await expect(panel.getByLabel('Left tube brightness', { exact: true })).toHaveValue('80')
   await page.getByLabel('Right tube enabled').uncheck()
-  await expect(panel).toContainText('Right tube is off')
+  await expect(panel.getByLabel('Right tube enabled', { exact: true })).not.toBeChecked()
+  await panel.getByLabel('Exposure bias', { exact: true }).fill('0.5')
+  await expect.poll(async () => (await saved(page)).camera.exposure).toBe(0.5)
   await expect.poll(async () => (await saved(page)).lights[0].brightness).toBe(80)
   await page.reload()
   await expect(panel.getByLabel('Left tube brightness', { exact: true })).toHaveValue('80')
@@ -115,15 +122,17 @@ test('GVM specifications distinguish lux from calibration and update old emitter
   await noGPU(page); await page.goto('/')
   const state = defaultState(); state.diameter = 25
   await load(page, state)
+  await page.getByRole('button', { name: 'Use 46 mm emitter approximation' }).click()
+  await expect.poll(async () => (await saved(page)).diameter).toBe(46)
+  expect((await saved(page)).lights).toEqual(state.lights)
+  await details(page, 'More')
+  await page.getByRole('button', { name: 'Help', exact: true }).click()
   await details(page, 'GVM fixture specifications')
   await expect(page.locator('.fixture-details')).toContainText('750 lux at 1 m')
   await expect(page.locator('.fixture-details')).toContainText('2180 lux at 0.5 m')
   await expect(page.locator('.fixture-details')).toContainText('not lumens')
-  await page.getByRole('button', { name: 'Use 46 mm emitter approximation' }).click()
-  await expect.poll(async () => (await saved(page)).diameter).toBe(46)
-  expect((await saved(page)).lights).toEqual(state.lights)
-  await details(page, 'Advanced camera')
-  await expect(page.getByText(/FX BSI-CMOS/)).toContainText('6048 × 4032')
+  await expect(page.getByRole('dialog')).toContainText('Nikon Z5II')
+  await expect(page.getByRole('dialog')).toContainText(/6048\s*×\s*4032/)
 })
 
 test('quick shutter, aperture and brightness controls recompose real GPU lighting without resampling', async ({ page }) => {
@@ -146,23 +155,33 @@ test('quick shutter, aperture and brightness controls recompose real GPU lightin
   await expect(page.getByRole('button', { name: 'Resume rendering' })).toBeVisible()
 })
 
-test('real tape is yellow, moves with the table, survives capture, and aperture never adds blur', async ({ page }) => {
+test('one metric overlay stays bright with lights off, follows scan coordinates, and is exported', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message))
-  // Expose for the diffuse tape rather than the much brighter steel reflection.
-  const state = defaultState(); state.camera.shutter = 1 / 15
+  const state = defaultState()
   await page.addInitScript(s => localStorage.setItem('nihonto-studio-setup-v1', JSON.stringify(s)), state)
   await page.goto('/?clawpilotTheme=dark')
-  await samples(page, 64)
+  await samples(page, 32)
   await page.getByRole('button', { name: 'Pause rendering' }).click()
   const first = await imageStats(page)
-  expect(first.yellow).toBeGreaterThan(200)
-  expect(first.yellowY).toBeLessThan(0.5)
+  expect(first.yellow).toBeLessThan(50)
+  const tape = page.getByRole('img', { name: 'Metric tape overlay' })
+  await expect(tape).toHaveCount(1)
+  const tapeBounds = await tape.evaluate(svg => {
+    const bar = svg.querySelector(':scope > rect')!
+    const height = svg.getBoundingClientRect().height
+    return { top: Number(bar.getAttribute('y')) / height,
+      bottom: (Number(bar.getAttribute('y')) + Number(bar.getAttribute('height'))) / height }
+  })
+  expect(tapeBounds.bottom).toBeLessThan(0.5)
   const count = await page.locator('.render-details').textContent()
   for (const aperture of ['1.2', '11']) {
-    await page.getByLabel('Aperture', { exact: true }).fill(aperture)
+    await page.getByLabel('Camera aperture', { exact: true }).fill(aperture)
     await expect.poll(async () => (await imageStats(page)).hash).toBe(first.hash)
     expect(Number((await page.locator('.render-details').textContent())?.match(/(\d+) spp/)?.[1])).toBeGreaterThanOrEqual(Number(count?.match(/(\d+) spp/)?.[1]))
   }
+  await page.getByLabel('Left tube brightness', { exact: true }).fill('0')
+  await page.getByLabel('Right tube brightness', { exact: true }).fill('0')
+  await expect.poll(async () => (await imageStats(page)).mean).toBe(0)
   await page.getByRole('button', { name: 'Save preview', exact: true }).click()
   await expect(page.locator('.preview-thumb')).toHaveCount(1)
   await expect(page.getByRole('dialog')).not.toBeVisible()
@@ -171,23 +190,30 @@ test('real tape is yellow, moves with the table, survives capture, and aperture 
     await img.decode(); const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight
     const ctx = c.getContext('2d')!; ctx.drawImage(img, 0, 0)
     const p = ctx.getImageData(0, 0, c.width, c.height).data
+    const rows: number[] = []
     let yellow = 0
-    for (let i = 0; i < p.length; i += 4) if (p[i] > 60 && p[i + 1] > 45 && p[i + 2] < p[i + 1] * 0.65) yellow++
-    return yellow
+    for (let y = 0; y < c.height; y++) {
+      let rowYellow = 0
+      for (let x = 0; x < c.width; x++) {
+        const i = (y * c.width + x) * 4
+        if (p[i] > 60 && p[i + 1] > 45 && p[i + 2] < p[i + 1] * 0.65) rowYellow++
+      }
+      yellow += rowYellow
+      if (rowYellow > c.width * 0.75) rows.push(y)
+    }
+    return { yellow, top: rows[0] / c.height, bottom: (rows.at(-1)! + 1) / c.height }
   })
-  expect(pixels).toBeGreaterThan(200)
+  expect(pixels.yellow).toBeGreaterThan(200)
+  expect(pixels.top).toBeCloseTo(tapeBounds.top, 2)
+  expect(pixels.bottom).toBeCloseTo(tapeBounds.bottom, 2)
   await page.getByRole('button', { name: 'Close dialog' }).click()
-  await details(page, 'Advanced rig')
-  await page.getByLabel('Across frame', { exact: true }).fill('15')
-  await page.getByRole('button', { name: 'Resume rendering' }).click(); await samples(page, 32)
-  await page.getByRole('button', { name: 'Pause rendering' }).click()
-  expect((await imageStats(page)).yellowY).toBeLessThan(first.yellowY - 0.04)
   await page.locator('.viewport').screenshot({ path: 'test-results/metric-tape.png' })
-  await page.getByLabel('Metric reference tape', { exact: true }).uncheck()
-  await page.getByRole('button', { name: 'Resume rendering' }).click(); await samples(page, 32)
-  expect((await imageStats(page)).yellow).toBeLessThan(50)
+  const firstMarks = await tape.textContent()
   await page.getByLabel('Viewed position from base', { exact: true }).fill('100')
   await expect.poll(async () => (await saved(page)).blade.x).toBe(250)
+  expect(await tape.textContent()).not.toBe(firstMarks)
+  await page.getByRole('button', { name: 'Metric tape', exact: true }).click()
+  await expect(tape).toHaveCount(0)
   await page.getByRole('button', { name: /Comparisons/ }).click()
   await page.getByRole('button', { name: 'Restore rig only' }).click()
   expect((await saved(page)).blade.x).toBe(250)
@@ -215,7 +241,7 @@ test('saving, import validation, references and locked scan preview groups work'
   await page.locator('input[type=file]').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"version":99}') })
   await expect(page.locator('.error-banner')).toContainText('Unsupported setup version')
   await details(page, 'More')
-  await page.getByRole('button', { name: 'References', exact: true }).click()
+  await page.getByRole('button', { name: 'Met study references', exact: true }).click()
   await expect(page.locator('.reference-card')).toHaveCount(10)
   await page.getByRole('button', { name: 'Close dialog' }).click()
   await page.getByRole('button', { name: /Comparisons/ }).click()

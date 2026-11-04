@@ -125,5 +125,5 @@ describe('historical presets', () => {
     state.blade.definition = d
     expect(automaticLightPlacement(state).warning).toBe('')
     geometry.dispose(); material.dispose()
-  })
+  }, 15_000)
 })

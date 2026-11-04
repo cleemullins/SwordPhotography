@@ -1,21 +1,23 @@
 import { expect, test } from '@playwright/test'
 import { defaultState } from '../src/model'
-import { saved, noGPU, load, samples, details } from './helpers'
+import { saved, noGPU, load, samples } from './helpers'
 
-test('one-shot suggestions preserve intensity and never follow the moving blade', async ({ page }) => {
+test('one-shot suggestions balance power below the camera and never follow the moving blade', async ({ page }) => {
   await noGPU(page); await page.goto('/')
-  await page.getByRole('button', { name: 'Left light', exact: true }).click()
-  await page.getByLabel('Left brightness', { exact: true }).fill('42')
+  await page.getByLabel('Left tube brightness', { exact: true }).fill('42')
   await page.getByLabel('Right tube enabled', { exact: true }).uncheck()
   await page.getByRole('button', { name: 'Suggest light positions' }).click()
   await expect.poll(async () => (await saved(page)).lights[0].height).not.toBe(380)
   const first = await saved(page)
-  expect(first.lights[0].brightness).toBe(42); expect(first.lights[1].enabled).toBe(false)
+  expect(first.lights[0].brightness).toBeGreaterThan(0); expect(first.lights[0].brightness).toBeLessThanOrEqual(100)
+  expect(first.lights[1].enabled).toBe(false)
+  expect(first.camera.autoExposure).toBe(true)
+  for (const light of first.lights) expect(light.height + first.diameter / 2).toBeLessThanOrEqual(first.camera.height)
   expect(first.automaticLightPosition).toBe(false)
-  await page.getByRole('button', { name: 'Camera', exact: true }).click()
-  await page.getByLabel('Camera height', { exact: true }).fill('800')
+  await page.getByRole('button', { name: 'Camera position', exact: true }).focus()
+  await page.keyboard.press('Shift+ArrowUp')
   await page.getByLabel('Viewed position from base', { exact: true }).fill('100')
-  await expect.poll(async () => (await saved(page)).camera.height).toBe(800)
+  await expect.poll(async () => (await saved(page)).camera.height).toBe(first.camera.height + 10)
   expect((await saved(page)).lights).toEqual(first.lights)
   await page.reload()
   expect((await saved(page)).lights).toEqual(first.lights)
@@ -53,7 +55,7 @@ test('suggestions illuminate both real GPU contributions', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
-test('GVM tube spans are 1200 mm, can be centered once, and remain fixed during scanning', async ({ page }) => {
+test('GVM tube spans are 1200 mm and always centered on the stationary origin', async ({ page }) => {
   await noGPU(page); await page.goto('/')
   const ratio = await page.locator('.tube-span').evaluate(svg => {
     const tube = svg.querySelector<SVGLineElement>('.span-left')!
@@ -62,15 +64,15 @@ test('GVM tube spans are 1200 mm, can be centered once, and remain fixed during 
   })
   expect(ratio).toBeCloseTo(1200 / 700, 6)
   await page.getByLabel('Viewed position from base', { exact: true }).fill('250')
-  await details(page, 'Advanced rig')
-  await page.getByRole('button', { name: 'Center tube spans on blade' }).click()
-  await expect.poll(async () => (await saved(page)).lights.map(l => l.x)).toEqual([100, 100])
+  await expect.poll(async () => (await saved(page)).lights.map(l => l.x)).toEqual([0, 0])
+  await expect(page.getByRole('button', { name: 'Center tube spans on blade' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Suggest light positions' }).click()
-  expect((await saved(page)).lights.map(l => l.x)).toEqual([100, 100])
+  await expect(page.getByRole('button', { name: 'Suggest light positions' })).toBeEnabled()
+  expect((await saved(page)).lights.map(l => l.x)).toEqual([0, 0])
   await page.getByRole('button', { name: 'Lock rig / Preview scan' }).click()
   await page.getByLabel('Viewed position from base', { exact: true }).fill('350')
   await expect.poll(async () => (await saved(page)).blade.x).toBe(0)
-  expect((await saved(page)).lights.map(l => l.x)).toEqual([100, 100])
+  expect((await saved(page)).lights.map(l => l.x)).toEqual([0, 0])
 })
 
 test('top view projects actual side offsets, blade translation and camera coverage at one scale', async ({ page }) => {
@@ -97,7 +99,7 @@ test('top view projects actual side offsets, blade translation and camera covera
   })
   const first = await geometry(), scale = first.tubes[0].length / 1200
   for (const [i, tube] of first.tubes.entries()) {
-    expect(tube.x - first.origin.x).toBeCloseTo(state.lights[i].x * scale)
+    expect(tube.x).toBeCloseTo(first.origin.x)
     expect(first.origin.y - tube.y).toBeCloseTo(state.lights[i].y * scale)
     expect(tube.thickness).toBeCloseTo(state.diameter * scale)
   }
@@ -107,8 +109,8 @@ test('top view projects actual side offsets, blade translation and camera covera
   expect(first.frame.width / first.frame.height).toBeCloseTo(35.9 / 23.9)
   expect(first.tubes[0].y).toBeGreaterThan(first.blade.y)
   expect(first.tubes[1].y).toBeLessThan(first.blade.y)
-  await page.getByRole('button', { name: 'Left light', exact: true }).click()
-  await page.getByLabel('Left rig offset', { exact: true }).fill('160')
+  const repositioned = await saved(page); repositioned.lights[0].y = 160
+  await load(page, repositioned)
   const sameSide = await geometry()
   expect(sameSide.tubes.every(tube => tube.y < sameSide.blade.y)).toBe(true)
   await page.getByRole('button', { name: 'Lock rig / Preview scan' }).click()
@@ -126,12 +128,15 @@ test('the camera stays visible while selecting and adjusting a tube on desktop',
   await noGPU(page); await page.goto('/')
   for (const width of [1000, 1440, 1920]) {
     await page.setViewportSize({ width, height: 1000 })
-    await page.getByRole('button', { name: 'Left light', exact: true }).click()
-    await page.getByLabel('Left brightness', { exact: true }).scrollIntoViewIfNeeded()
+    await page.getByRole('button', { name: 'Left light position', exact: true }).scrollIntoViewIfNeeded()
+    await page.getByRole('button', { name: 'Left light position', exact: true }).focus()
     const image = await page.locator('.viewport').boundingBox()
     const rig = await page.locator('#rig-setup').boundingBox()
     expect(rig!.x).toBeGreaterThan(image!.x + image!.width)
-    expect(image!.y).toBeGreaterThanOrEqual(0)
-    expect(image!.y + image!.height).toBeLessThanOrEqual(1000)
+    expect(image!.y).toBeLessThan(1000)
+    expect(image!.y + image!.height).toBeGreaterThan(0)
+    const frame = await page.locator('.viewport-frame').boundingBox()
+    const scan = await page.locator('.navigator-panel').boundingBox()
+    expect(frame!.width).toBeCloseTo(scan!.width, 0)
   }
 })

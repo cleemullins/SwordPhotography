@@ -35,36 +35,52 @@ for comparison and reproduction on the real rig.
 | Camera | **Nikon Z5II**, FX BSI-CMOS, **35.9 x 23.9 mm**, **24.5 MP / 6048 x 4032** native pixels. Adjustable height/distance, focal length **20 to 135 mm**, aperture **f/1.2 to f/11**. Native sensor resolution is distinct from preview resolution. |
 | Lights | Exactly two **GVM-PRO-BD45R** fixtures, **50 x 46 x 1200 mm** housings (superseding the nominal 48-inch dimension). Adjustable positions, independent on/off and brightness. The preview uses approximate cylindrical emitters at **5600 K**, not calibrated fixture optics. |
 | Blade model | Generate an editable parameterized 3D blade, with a dedicated Designer and approximately ten source-backed historical presets, preferably Juyo or higher. |
-| Exposure metering | One-shot blade-detail metering at ISO 100, adjusting shutter while preserving the selected aperture and light settings. Exposure stays fixed during scanning. |
-| Hada | Designer selection of Itame, Mokume, Masame, Ayasugi or None, with a grain preview and real changes to the rendered steel surface. |
+| Exposure metering | Optional Auto shutter protects the brightest rendered blade highlight. Manual shutter is available in the same strip; no separate Meter once action. ISO stays at 100 and exposure stays fixed during a locked scan. |
+| Hada | Visible illustrated selection of Itame, Mokume, Masame, Ayasugi or None in Blade model and the Designer, with real changes to the rendered steel. New rigs use Itame; saved None is preserved and clearly labeled. |
 | Blade movement | Translate the nihonto beneath the camera to bring different sections and features into view. Recompute reflections as it moves. |
 | Analysis | Optional overlays on the camera image to help explain and evaluate the lighting and camera setup. |
-| References | Approximately ten high-quality nihonto photographs or models to guide appearance and evaluation, with documented reuse rights. |
+| References | Original exact-blade photos for the ten historical presets, accessible from More without enlarged comparisons; a separate public-domain Met study collection with full-resolution zoom. Preserve identity, source and reuse rights. |
 
 ## Implemented workflow and UX requirements
 
 The workflow is **Set up the fixed rig → Preview the scan → Save the rig**.
-The large camera image and scan strip sit beside a selected-object rig inspector.
+The large camera image and scan strip sit beside the dimensioned rig diagram.
 Blade design is a separate editor, not an equal-priority settings tab.
+The image fills the scan column. Keep the pinned exposure/inspection panel compact,
+with aligned label, slider and toggle rows. Use the draggable blade navigator and
+numeric position field rather than a duplicate scan-position range slider.
+A separate shaded, orbitable 3D area shows the table, blade, tubes and camera.
+Drive their transforms from the same physical setup. Move the table and blade
+together during scanning; orbiting the overview must not move the photographic
+camera. Distinguish illustrative table/camera-body shapes from measured geometry.
 
 - **Camera:** focal length, aperture, height, and coverage per frame. Always keep
   the preview sharp, without manual focus or depth-of-field blur. Derive focus
-  for projection in setup, then freeze projection during a locked scan. Meter once
-  adjusts shutter at ISO 100, retaining aperture and lights. Advanced controls hold
-  manual shutter, exposure compensation and whole-blade-shot reconfiguration.
+  for projection in setup, then freeze projection during a locked scan. Keep
+  shutter, aperture, exposure bias, source brightness and source toggles in one
+  camera-adjacent strip. Remove the duplicate Advanced Camera area and inspector
+  aperture/brightness controls. Move whole-blade-shot reconfiguration into More
+  and keep full hardware metadata in Help.
   Keep exposure information visible immediately beside the camera image, with
   quick shutter, aperture and both tube brightness sliders. Share the same rig
   settings and lock enforcement as the inspector; identify aperture compensation.
-- **Lights:** one card per tube with brightness, on/off, and longitudinal position.
-  Set height and lateral offset directly in the setup diagram. Optional linked
-  positioning supports symmetric setups.
+  Auto shutter sits next to the shutter slider, targets 90% of clipping from
+  rendered blade highlights, and reacts to light/optical changes during setup.
+  Manual shutter edits disable it. Lock pauses it without changing the last
+  exposure; unlocking resumes it when selected.
+- **Lights:** brightness and on/off are beside the camera image. Set height and
+  lateral offset in the setup diagram. Both longitudinal centers remain at the
+  fixed rig origin X=0, including during scanning; remove the Center tube spans
+  action and along-blade offset fields. Optional linked positioning remains.
 - **Scan:** translate only the table along the blade. Provide a navigator, position
   from base, start/end, step, previous/next frames, frame count and derived overlap.
   Include the final partial step, warn about gaps, and label the workflow as
   simulated positioning rather than hardware control.
 - **Model:** live dimension and shape editing, silhouette and cross-section previews,
   historical preset selection, accessible measurement provenance, and independent
-  hada selection. Clearly label procedural grain as illustrative.
+  hada selection. Both the closed selector and open options show readable rendered
+  swatches, not generic icons. Support mouse and keyboard selection. Clearly label
+  procedural grain as illustrative and identify None as no added grain.
 - **The setup:** an end-on diagram with draggable lights (height and lateral offset)
   and camera (height only), plus precise numeric editing and keyboard steps.
   Fit the actual rig without excessive empty space. Provide Zoom +/− and Fit rig
@@ -85,23 +101,33 @@ Blade design is a separate editor, not an equal-priority settings tab.
   belongs in the end-on view.
 - **Suggest light positions:** evaluate the entire blade, including the kissaki,
   as the table brings each section under the stationary camera. Choose one fixed
-  pair of tube positions, prioritizing coverage of the weakest sampled section
-  and then grain contrast, not maximum highlight brightness. The suggestion must
-  not depend on the current scan frame. Preserve brightness, on/off and along-blade
-  centering. Never follow table movement. Report unavailable or weak-coverage solutions.
-  Center both 1200 mm tube spans on the current blade center with a separate setup
-  action, then hold them fixed during the scan. Show full spans in a top-view guide;
+  pair of tube positions, protecting the weakest transverse regions and scan
+  sections rather than only bright facet midpoints. Include cutting-edge, hamon,
+  ji and shinogi regions with their differing polish responses.
+  The suggestion must not depend on the current scan frame. Keep the highest
+  tube surface at or below camera height; balance brightness within 100% instead
+  of escaping that practical limit. Preserve on/off and fixed-origin centering,
+  enable Auto shutter to protect exposure, and never follow table movement.
+  Report unavailable or weak-coverage solutions rather than exceeding the ceiling.
+  Keep both 1200 mm tube spans centered on the stationary rig, not the moving
+  blade. Show full spans in a top-view guide;
   end-on circles must not be mistaken for point lights.
 - **Lock rig:** camera projection/exposure, light positions/intensities, model,
-  tape and transverse alignment remain fixed while the table translates. Edit rig
+  and transverse alignment remain fixed while the table translates. Edit rig
   explicitly unlocks those controls. Import/restore opens unlocked for review.
-- **Metric reference:** a physical yellow tape alongside the blade moves with the
-  table and appears in saved images. Use millimeter ticks, centimeter numbers,
-  and zero at the blade base; disclose reference-plane parallax. Include tape in
-  frame is an explicit setup action, not scan-time automation. Tape shares exposure
-  and may be dark when exposing for bright steel; do not make it an emissive overlay.
-- **Precision:** numeric fields for positions, sliders plus numeric fields for other
-  parameters; selectable millimeters or inches.
+  The table starts centered by default; remove the Center blade action without
+  continuously recentering it or preventing intentional scan/alignment movement.
+- **Metric reference:** a bright yellow overlay above the blade follows the old
+  ruler's reference-plane datum and appears in saved images. Use centimeter
+  labels, zero at the blade base and zoom-adaptive ticks. Keep it inside the frame,
+  independent of lighting and exposure. Toggling it never moves the rig and is
+  allowed while locked. Do not retain a second, ray-traced ruler.
+- **Precision:** show camera height, tube heights and signed rig offsets directly
+  in the end-on diagram using dimension/extension lines and arrowheads. Remove
+  the separate position fields and Camera/Left light/Right light selector buttons.
+  Preserve direct handle dragging and 1 mm / Shift-10 mm keyboard adjustment.
+  Use sliders plus numeric fields for the remaining optical/exposure parameters;
+  selectable millimeters or inches apply to displayed dimensions.
   Explain checkbox behavior with hover tooltips and accessible descriptions,
   including tape, emission, linking and aperture compensation. Rig and scan units
   share one preference; lens mm and metric tape remain explicitly fixed units.
@@ -110,6 +136,10 @@ Blade design is a separate editor, not an equal-priority settings tab.
   Save preview adds a thumbnail without interrupting the view. Group lighting
   comparisons and scan positions separately; distinguish full-setup from rig-only
   restore so table movement is never a hidden side effect.
+- **Photographic references:** retain access to original historical-blade images
+  through More. Do not automatically enlarge low-resolution crops beside the
+  render: the available source detail is inadequate for that comparison. Keep
+  unregistered close-ups separate and retain source/provenance records.
 
 ### Inspection controls
 
@@ -117,11 +147,12 @@ Blade design is a separate editor, not an equal-priority settings tab.
 |---|---|
 | Per-light contribution | Distinguish reflections and illumination attributable to each tube. |
 | Highlight clipping | Identify detail lost at the selected simulated exposure. |
-| Framing | Rule-of-thirds overlay; coverage and position are reported by the scan controls and physical setup diagrams. |
+| Metric tape | Bright reference-plane ruler above the blade, included in saved images. |
 
-Framing and clipping are independently toggleable. Camera, Left only, Right only
+Metric tape and clipping are independently toggleable. The framing grid and
+camera-view badges are removed. Camera, Left only, Right only
 and Light contributions are mutually exclusive display modes. Clean view selects
-the ordinary camera image and clears overlays without changing the scene.
+the ordinary camera image and clears overlays without moving the rig.
 Save preview captures the selected mode and overlays; choose Clean view first
 when a clean image is needed.
 
@@ -153,13 +184,13 @@ Model finite tube emitters and perspective with an always-sharp preview.
 Use automatic setup focus and explicit exposure controls. Do not silently normalize brightness:
 light-intensity changes must remain visible. Optional aperture exposure compensation
 must be clearly labeled.
-Meter once is an explicit setup action using combined linear light only on the
-blade, regardless of analysis overlays. Preserve aperture and light settings;
-vary shutter within 1/8000-30 seconds at ISO 100. Protect blade highlights, show
-adjustment/limit status, and retain shutter with a warning when the blade is dark
-or out of view. Applying metering resets EV bias to zero and disables aperture
-compensation. No continuous auto exposure runs during scanning.
-Clearly state that shutter values are simulation-relative, not calibrated guidance.
+Auto shutter is the single automatic exposure workflow. After at least 32 stable samples,
+read the full-resolution blade-masked HDR image and protect the maximum RGB
+channel, including rare glints. Account for the selected aperture, compensation,
+EV and actual source brightness. Preserve exposure with an explicit status for
+dark/empty views and report shutter limits. Do not apply stale readings after a
+scene change, manual edit or lock. It must not renormalize frames during a locked scan.
+Shutter values remain simulation-relative, not calibrated guidance for the real camera.
 
 Expose the supplied hardware specifications without overstating the model:
 GVM's 750 lux at 1 m and 2180 lux at 0.5 m are illuminance, not lumen ratings.
@@ -178,10 +209,19 @@ still needed before claiming those targets are met.
 
 ## Reference assets and realism boundaries
 
-An initial collection of **10 public-domain Met Museum photographs** is included
-in the studio's reference gallery and `studio/public/references`, with source URLs,
-licensing, dimensions, and checksums. It includes full blades, mounted swords, and
-tang details. These are photographs, not a collection of 3D models.
+The Met study collection contains **10 objects' primary public-domain photographs**
+and three additional Gassan views, including a steel-grain/kissaki detail.
+`studio/public/references` records source URLs, licensing, dimensions and checksums.
+The in-app viewer supports full-resolution zoom/pan, attribution and original-image
+links. These are supplemental references, not the ten named Juyo blades.
+
+`studio/public/blade-references` contains photographs of the exact ten historical
+presets and four additional unregistered details. The user confirmed permission
+to bundle these dealer images; copyright remains with their sources, separately
+from the Met CC0 collection. Ayanokoji and Tametsugu full-blade photos are
+lower-resolution, and the UI must disclose that instead of substituting another
+blade or an unregistered macro image. Reference photos remain separate from
+rendered materials and captured simulation images.
 
 Use photographs as visual references, not as relightable ground truth. Highlights
 and shadows baked into a photograph must not masquerade as simulated illumination.
@@ -200,6 +240,10 @@ claiming reliable prediction of the actual blade's appearance.
   prepainted highlight. A disabled tube contributes no emitted illumination.
 - Independent brightness controls produce visible changes at fixed exposure.
 - Both tubes retain their physical length and 5600 K target throughout adjustments.
+- Successful Auto placement never places any part of a tube above camera height.
+  It may rebalance brightness, never enables a disabled source, and clearly
+  enables highlight-protecting Auto shutter. Subsequent locked movement changes
+  neither source power nor exposure.
 - Top-view placement follows edits to each tube's X/Y and the blade's X/Y. Equal
   scale and the actual blade outline make relative placement reproducible; tube
   height changes do not masquerade as transverse motion.
@@ -212,7 +256,11 @@ claiming reliable prediction of the actual blade's appearance.
   restored to the frame during setup without moving tubes or changing scan X.
 - Overlays correspond to the current scene and can be removed without altering it.
 - Saved setups restore camera, lighting, blade, scan, tape and exposure settings,
-  with derived setup focus and legacy automation disabled.
+  with derived setup focus and legacy light-following disabled. Auto shutter's
+  saved choice is visible and runs only while unlocked.
+- Each historical preset loads its own source image. Reference frame dimensions
+  match the camera view, a 120 mm window remains 120 mm across scan positions, and
+  inspection of either reference collection never changes the rig.
 - Blade presets generate reproducible geometry from saved parameters; saved setups
   retain the blade definition and material settings, not just a mesh reference.
 - Performance is measured on the agreed hardware and render resolution, alongside
